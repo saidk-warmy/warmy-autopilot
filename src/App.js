@@ -1422,7 +1422,7 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
 }
 
 function PipelineTab({ pipeline, activePipeline, pipelineUrgent, pipelineLoading, pipelineError, pipelineLastSync, loadPipeline, aeFilter, onStageChange, onFollowUpDone, onLogActivity }) {
-  const [openSections, setOpenSections] = React.useState({ urgent: true, meeting_scheduled: false, proposal_sent: false, negotiation: false, closed: false });
+  const [openSections, setOpenSections] = useState({ urgent: true, meeting_scheduled: false, proposal_sent: false, negotiation: false, closed: false });
 
   const toggle = (key) => setOpenSections(p => ({ ...p, [key]: !p[key] }));
 
