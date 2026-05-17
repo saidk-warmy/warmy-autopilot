@@ -938,27 +938,40 @@ CRITICAL:
    COMPONENTS
 ═══════════════════════════════════════════════════════ */
 function Badge({ label, color, size = "sm" }) {
-  const pad = size === "sm" ? "2px 7px" : "4px 11px";
+  const pad = size === "sm" ? "2px 8px" : "4px 12px";
   const fs = size === "sm" ? 10 : 12;
   return (
     <span style={{
-      display: "inline-block", padding: pad, borderRadius: 4,
-      background: `${color}18`, border: `1px solid ${color}40`,
-      color, fontSize: fs, fontWeight: 700, letterSpacing: "0.05em",
-      fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap",
+      display: "inline-block", padding: pad, borderRadius: 20,
+      background: `${color}15`, border: `1px solid ${color}35`,
+      color, fontSize: fs, fontWeight: 600, letterSpacing: "0.02em",
+      whiteSpace: "nowrap", lineHeight: 1.6,
     }}>{label}</span>
   );
 }
 
-function AEAvatar({ email, size = 30 }) {
-  const p = AE_PROFILES[email] || { initials: "?", color: "#64748b" };
+function HubSpotLink({ dealId, contactName }) {
+  if (!dealId) return null;
+  const url = `https://app.hubspot.com/contacts/warmy/deal/${dealId}`;
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer" className="hubspot-btn" title={`Open ${contactName} in HubSpot`}>
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18.164 7.93V5.084a2.198 2.198 0 0 0 1.267-1.978V3.05A2.198 2.198 0 0 0 17.234.853h-.057a2.198 2.198 0 0 0-2.197 2.197v.057a2.198 2.198 0 0 0 1.267 1.978V7.93a6.231 6.231 0 0 0-2.964 1.29L5.42 3.617a2.431 2.431 0 1 0-1.172 1.465l7.698 5.516a6.28 6.28 0 0 0-.875 3.218 6.28 6.28 0 0 0 .875 3.218L5.42 17.82a2.431 2.431 0 1 0 1.172 1.465l7.723-5.529a6.254 6.254 0 0 0 9.842-5.14 6.253 6.253 0 0 0-5.993-6.686zM17.234 19.49a3.673 3.673 0 1 1 0-7.346 3.673 3.673 0 0 1 0 7.346z"/>
+      </svg>
+      HubSpot
+    </a>
+  );
+}
+
+function AEAvatar({ email, size = 32 }) {
+  const p = AE_PROFILES[email] || { initials: "?", color: "#FF6B2B", name: "Unknown" };
   return (
     <div title={p.name} style={{
       width: size, height: size, borderRadius: "50%",
-      background: `${p.color}20`, border: `1.5px solid ${p.color}50`,
+      background: `${p.color}20`, border: `2px solid ${p.color}45`,
       display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.34, fontWeight: 700, color: p.color, flexShrink: 0,
-      fontFamily: "'JetBrains Mono', monospace",
+      fontSize: size * 0.32, fontWeight: 700, color: p.color, flexShrink: 0,
+      letterSpacing: "0.03em",
     }}>{p.initials}</div>
   );
 }
@@ -1071,54 +1084,66 @@ ${stage === "Closed Lost" ? '4. Set loss reason: "No response after 4 follow-up 
 
   return (
     <div style={{
-      background: "rgba(255,255,255,0.025)", border: `1px solid rgba(255,255,255,0.07)`,
-      borderRadius: 14, overflow: "hidden",
+      background: "var(--warmy-navy-2)",
+      border: `1px solid var(--warmy-border)`,
+      borderRadius: 12, overflow: "hidden",
       borderLeft: `3px solid ${urgencyColor}`,
       animation: "slideUp 0.3s ease",
+      marginBottom: 8,
     }}>
       {/* Card header */}
       <div
         onClick={() => setExpanded(e => !e)}
         style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
       >
-        <AEAvatar email={task.ae} size={36} />
+        <AEAvatar email={task.ae} size={38} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{task.contactName}</span>
-            <span style={{ fontSize: 12, color: "#475569" }}>·</span>
-            <span style={{ fontSize: 12, color: "#64748b" }}>{task.company}</span>
-            <Badge label={fuConfig.badge} color={fuConfig.color} />
-            {task.daysSinceMeeting >= 6 && <Badge label={`${task.daysSinceMeeting}d`} color={urgencyColor} />}
-            {task.isNew && <Badge label="NEW" color="#10b981" />}
+          {/* Lead name + company — prominent */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 5 }}>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--warmy-text)", letterSpacing: "-0.2px" }}>{task.contactName}</span>
+            <span style={{ fontSize: 12, color: "var(--warmy-text-dim)" }}>·</span>
+            <span style={{ fontSize: 13, color: "var(--warmy-text-muted)", fontWeight: 500 }}>{task.company}</span>
+            {task.isNew && <Badge label="NEW" color="var(--warmy-green)" />}
           </div>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
-              {aeProfile?.name} · {task.dealValue} · {task.dealStage}
-            </span>
+          {/* Meta row */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <Badge label={fuConfig.badge} color={fuConfig.color} />
+            {task.daysSinceMeeting >= 3 && <Badge label={`Day ${task.daysSinceMeeting}`} color={urgencyColor} />}
+            <span style={{ fontSize: 11, color: "var(--warmy-text-dim)" }}>{aeProfile?.name}</span>
+            <span style={{ fontSize: 11, color: "var(--warmy-text-dim)" }}>·</span>
+            <span style={{ fontSize: 11, color: "var(--warmy-text-muted)", fontWeight: 500 }}>{task.dealValue}</span>
+            {task.hubspotDealId && (
+              <span onClick={e => e.stopPropagation()}>
+                <HubSpotLink dealId={task.hubspotDealId} contactName={task.contactName} />
+              </span>
+            )}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           {task.pipelineStatus === "pending" && (
-            <Badge label="PIPELINE !" color="#f59e0b" />
+            <Badge label="PIPELINE" color="var(--warmy-orange)" />
           )}
-          <span style={{ color: "#334155", fontSize: 14, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
+          <span style={{ color: "var(--warmy-text-dim)", fontSize: 14, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
         </div>
       </div>
 
       {/* Expanded content */}
       {expanded && (
-        <div style={{ padding: "0 16px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+        <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--warmy-border-soft)" }}>
 
           {/* Meeting context */}
-          <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(0,0,0,0.2)", borderRadius: 8, marginBottom: 14 }}>
-            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>Meeting Context</p>
-            <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.65 }}>{task.meetingContext}</p>
+          <div style={{ marginTop: 12, padding: "12px 14px", background: "var(--warmy-navy-3)", borderRadius: 8, marginBottom: 14, borderLeft: "2px solid var(--warmy-orange-border)" }}>
+            <p style={{ margin: "0 0 5px", fontSize: 10, color: "var(--warmy-orange)", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>Meeting Context</p>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--warmy-text-muted)", lineHeight: 1.7 }}>{task.meetingContext}</p>
+            {task.nextStep && (
+              <p style={{ margin: "8px 0 0", fontSize: 11, color: "var(--warmy-orange)", fontWeight: 500 }}>→ {task.nextStep}</p>
+            )}
           </div>
 
           {/* Draft area */}
           <div style={{ marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <p style={{ margin: 0, fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>
+              <p style={{ margin: 0, fontSize: 11, color: "var(--warmy-text-dim)", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>
                 {fuConfig.label} Draft
               </p>
               <button
@@ -1142,12 +1167,12 @@ ${stage === "Closed Lost" ? '4. Set loss reason: "No response after 4 follow-up 
             <textarea
               value={draft}
               onChange={e => setDraft(e.target.value)}
-              placeholder={`Click "Generate Draft" to write ${fuConfig.label} in ${aeProfile?.name}'s style…`}
+              placeholder={`Click "Generate Draft" to write ${fuConfig.label} in ${aeProfile?.name}'s voice…`}
               style={{
-                width: "100%", minHeight: 160, padding: "12px",
-                background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 8, color: "#cbd5e1", fontSize: 13, lineHeight: 1.7,
-                fontFamily: "'JetBrains Mono', monospace", resize: "vertical",
+                width: "100%", minHeight: 160, padding: "14px",
+                background: "var(--warmy-navy-3)", border: "1px solid var(--warmy-border)",
+                borderRadius: 8, color: "var(--warmy-text)", fontSize: 13, lineHeight: 1.75,
+                fontFamily: "'Inter', sans-serif", resize: "vertical",
                 outline: "none", boxSizing: "border-box",
               }}
             />
@@ -1160,12 +1185,12 @@ ${stage === "Closed Lost" ? '4. Set loss reason: "No response after 4 follow-up 
               onClick={handleSend}
               disabled={!draft || sending}
               style={{
-                flex: 1, minWidth: 140, padding: "10px 16px", borderRadius: 8,
-                background: draft && !sending ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "rgba(255,255,255,0.04)",
-                border: `1px solid ${draft && !sending ? "transparent" : "rgba(255,255,255,0.08)"}`,
-                color: draft && !sending ? "#fff" : "#334155",
+                flex: 1, minWidth: 140, padding: "11px 16px", borderRadius: 8,
+                background: draft && !sending ? "var(--warmy-orange)" : "var(--warmy-navy-4)",
+                border: `1px solid ${draft && !sending ? "transparent" : "var(--warmy-border)"}`,
+                color: draft && !sending ? "#fff" : "var(--warmy-text-dim)",
                 fontSize: 13, fontWeight: 600, cursor: draft && !sending ? "pointer" : "not-allowed",
-                fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}
             >
               {sending ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⟳</span> Sending…</> : "✉ Send via Gmail"}
@@ -1177,11 +1202,11 @@ ${stage === "Closed Lost" ? '4. Set loss reason: "No response after 4 follow-up 
                 onClick={handleInitialPipeline}
                 disabled={pipelining}
                 style={{
-                  flex: 1, minWidth: 140, padding: "10px 16px", borderRadius: 8,
-                  background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
-                  color: "#f59e0b", fontSize: 13, fontWeight: 600,
+                  flex: 1, minWidth: 140, padding: "11px 16px", borderRadius: 8,
+                  background: "var(--warmy-orange-dim)", border: "1px solid var(--warmy-orange-border)",
+                  color: "var(--warmy-orange)", fontSize: 13, fontWeight: 600,
                   cursor: pipelining ? "not-allowed" : "pointer",
-                  fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 }}
               >
                 {pipelining ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⟳</span> Updating…</> : "→ Move to Proposal Sent"}
@@ -1326,37 +1351,44 @@ ${newStage === "disqualified" ? '3. Set disqualification reason: "' + (reason ||
       <div style={{ background: "rgba(255,255,255,0.025)", border: `1px solid ${urgencyBorder}`, borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `3px solid ${action.color}` }}>
         {/* Header */}
         <div onClick={() => setExpanded(e => !e)} style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-          <AEAvatar email={deal.ae} size={34} />
+          <AEAvatar email={deal.ae} size={36} />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{deal.contactName}</span>
-              <span style={{ fontSize: 12, color: "#475569" }}>· {deal.company}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 5 }}>
+              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--warmy-text)", letterSpacing: "-0.2px" }}>{deal.contactName}</span>
+              <span style={{ fontSize: 13, color: "var(--warmy-text-muted)", fontWeight: 500 }}>· {deal.company}</span>
               <Badge label={stageConfig.label} color={stageConfig.color} />
-              {action.urgency === "critical" && <Badge label="⚠ URGENT" color="#ef4444" />}
-              {action.urgency === "high" && deal.stage !== "meeting_scheduled" && <Badge label={`Day ${deal.daysInStage}`} color="#f59e0b" />}
+              {action.urgency === "critical" && <Badge label="⚠ URGENT" color="var(--warmy-red)" />}
+              {action.urgency === "high" && deal.stage !== "meeting_scheduled" && <Badge label={`Day ${deal.daysInStage}`} color="var(--warmy-orange)" />}
             </div>
-            <span style={{ fontSize: 11, color: action.color, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{action.label}</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, color: action.color, fontWeight: 600 }}>{action.label}</span>
+              <span style={{ fontSize: 11, color: "var(--warmy-text-dim)" }}>·</span>
+              <span style={{ fontSize: 11, color: "var(--warmy-text-muted)" }}>{deal.dealValue}</span>
+              {deal.hubspotId && (
+                <HubSpotLink dealId={deal.hubspotId} contactName={deal.contactName} />
+              )}
+            </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 11, color: "#334155" }}>{aeProfile.name?.split(" ")[0]}</span>
-            <span style={{ color: "#334155", fontSize: 12, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
+            <span style={{ fontSize: 11, color: "var(--warmy-text-dim)" }}>{aeProfile.name?.split(" ")[0]}</span>
+            <span style={{ color: "var(--warmy-text-dim)", fontSize: 14, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
           </div>
         </div>
 
         {/* Expanded action panel */}
         {expanded && (
-          <div style={{ padding: "0 16px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--warmy-border-soft)" }}>
             {/* Action description */}
-            <div style={{ margin: "12px 0", padding: "10px 12px", borderRadius: 8, background: `${action.color}10`, border: `1px solid ${action.color}25`, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+            <div style={{ margin: "12px 0", padding: "12px 14px", borderRadius: 8, background: `${action.color}10`, border: `1px solid ${action.color}25`, fontSize: 13, color: "var(--warmy-text-muted)", lineHeight: 1.65, borderLeft: `3px solid ${action.color}` }}>
               <span style={{ color: action.color, fontWeight: 600 }}>What to do: </span>{action.description}
             </div>
 
             {/* Day progress bar for timed stages */}
             {(deal.stage === "proposal_sent" || deal.stage === "negotiation") && (
               <div style={{ marginBottom: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11, color: "var(--warmy-text-dim)" }}>
                   <span>Day {deal.daysInStage}</span>
-                  <span style={{ color: deal.daysInStage >= 9 ? "#ef4444" : deal.daysInStage >= 3 ? "#f59e0b" : "#10b981" }}>
+                  <span style={{ color: deal.daysInStage >= 9 ? "var(--warmy-red)" : deal.daysInStage >= 3 ? "var(--warmy-orange)" : "var(--warmy-green)" }}>
                     {deal.daysInStage >= 10 ? "AUTO-CLOSE NOW" : `${10 - deal.daysInStage} days left`}
                   </span>
                 </div>
@@ -1664,44 +1696,129 @@ export default function App() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#080b12",
+      background: "var(--warmy-navy)",
       color: "#f1f5f9",
-      fontFamily: "'Outfit', system-ui, sans-serif",
-      backgroundImage: "radial-gradient(ellipse 60% 40% at 20% 0%, rgba(59,130,246,0.05) 0%, transparent 60%), radial-gradient(ellipse 40% 30% at 80% 100%, rgba(245,158,11,0.04) 0%, transparent 60%)",
+      fontFamily: "'Inter', system-ui, sans-serif",
+      backgroundImage: "radial-gradient(ellipse 50% 35% at 15% 0%, rgba(255,107,43,0.06) 0%, transparent 55%), radial-gradient(ellipse 40% 30% at 85% 100%, rgba(255,107,43,0.03) 0%, transparent 60%)",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        /* ── WARMY BRAND TOKENS ── */
+        :root {
+          --warmy-orange: #FF6B2B;
+          --warmy-orange-light: #FF8C5A;
+          --warmy-orange-dim: rgba(255,107,43,0.12);
+          --warmy-orange-border: rgba(255,107,43,0.3);
+          --warmy-navy: #0D1117;
+          --warmy-navy-2: #161B22;
+          --warmy-navy-3: #1C2128;
+          --warmy-navy-4: #21262D;
+          --warmy-border: rgba(255,255,255,0.08);
+          --warmy-border-soft: rgba(255,255,255,0.05);
+          --warmy-text: #E6EDF3;
+          --warmy-text-muted: #7D8590;
+          --warmy-text-dim: #484F58;
+          --warmy-green: #3FB950;
+          --warmy-red: #F85149;
+          --warmy-yellow: #D29922;
+          --warmy-blue: #388BFD;
+          --warmy-purple: #BC8CFF;
+        }
+
+        body { font-family: 'Inter', system-ui, sans-serif; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes slideUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-        textarea:focus { border-color: rgba(59,130,246,0.4) !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.08); }
-        textarea::placeholder { color: #1e293b; }
-        ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-        button { transition: all 0.15s; }
-        button:hover:not(:disabled) { opacity: 0.88; }
+        @keyframes slideUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.85)} }
+        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+        textarea:focus { border-color: var(--warmy-orange-border) !important; box-shadow: 0 0 0 3px var(--warmy-orange-dim); outline: none; }
+        textarea::placeholder { color: var(--warmy-text-dim); }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--warmy-navy-4); border-radius: 4px; }
+        button { transition: all 0.15s ease; font-family: 'Inter', sans-serif; }
+        button:hover:not(:disabled) { filter: brightness(1.08); }
+        button:active:not(:disabled) { transform: scale(0.98); }
+        a { color: inherit; text-decoration: none; }
+
+        .warmy-card {
+          background: var(--warmy-navy-2);
+          border: 1px solid var(--warmy-border);
+          border-radius: 12px;
+          transition: border-color 0.2s;
+        }
+        .warmy-card:hover { border-color: rgba(255,255,255,0.12); }
+
+        .warmy-btn-primary {
+          background: var(--warmy-orange);
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 10px 18px;
+          font-size: 13px;
+          display: flex; align-items: center; gap: 6px;
+        }
+        .warmy-btn-primary:hover { background: var(--warmy-orange-light); }
+
+        .warmy-btn-ghost {
+          background: transparent;
+          color: var(--warmy-text-muted);
+          border: 1px solid var(--warmy-border);
+          border-radius: 8px;
+          cursor: pointer;
+          padding: 7px 12px;
+          font-size: 12px;
+          display: flex; align-items: center; gap: 5px;
+        }
+        .warmy-btn-ghost:hover { border-color: rgba(255,255,255,0.15); color: var(--warmy-text); }
+
+        .hubspot-btn {
+          background: rgba(255,122,89,0.1);
+          color: #FF7A59;
+          border: 1px solid rgba(255,122,89,0.25);
+          border-radius: 6px;
+          cursor: pointer;
+          padding: 5px 10px;
+          font-size: 11px;
+          font-weight: 600;
+          display: inline-flex; align-items: center; gap: 4px;
+          text-decoration: none;
+        }
+        .hubspot-btn:hover { background: rgba(255,122,89,0.18); border-color: rgba(255,122,89,0.4); }
+
+        .urgency-critical { border-left: 3px solid var(--warmy-red) !important; }
+        .urgency-high { border-left: 3px solid var(--warmy-orange) !important; }
+        .urgency-medium { border-left: 3px solid var(--warmy-yellow) !important; }
+        .urgency-low { border-left: 3px solid var(--warmy-border) !important; }
       `}</style>
 
       {/* ── TOPBAR ── */}
       <div style={{
         position: "sticky", top: 0, zIndex: 100,
-        background: "rgba(8,11,18,0.92)", backdropFilter: "blur(16px)",
+        background: "rgba(13,17,23,0.96)", backdropFilter: "blur(20px)",
         borderBottom: "1px solid rgba(255,255,255,0.05)",
         padding: "0 24px", height: 58,
         display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           {/* Logo */}
-          <div style={{
-            width: 30, height: 30, borderRadius: 8,
-            background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 13, fontWeight: 800, color: "#0a0d14",
-          }}>W</div>
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc", lineHeight: 1 }}>AE Assistant</div>
-            <div style={{ fontSize: 10, color: "#334155", fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>Warmy.io · Sales Ops</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: "linear-gradient(135deg, #FF6B2B 0%, #FF4500 100%)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 16, fontWeight: 900, color: "#fff",
+              boxShadow: "0 2px 8px rgba(255,107,43,0.4)",
+            }}>w</div>
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#E6EDF3", lineHeight: 1, letterSpacing: "-0.3px" }}>warmy <span style={{ color: "#FF6B2B" }}>AE</span></div>
+              <div style={{ fontSize: 10, color: "#484F58", marginTop: 2, fontWeight: 500 }}>Sales Intelligence · warmy.io</div>
+            </div>
           </div>
 
           {/* Divider */}
@@ -1751,7 +1868,7 @@ export default function App() {
       <div style={{
         padding: "0 24px", borderBottom: "1px solid rgba(255,255,255,0.05)",
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        background: "rgba(8,11,18,0.7)",
+        background: "rgba(13,17,23,0.8)",
       }}>
         <div style={{ display: "flex", gap: 0 }}>
           {TAB_CONFIG.map(t => (
@@ -1770,8 +1887,8 @@ export default function App() {
               {t.count !== null && t.count > 0 && (
                 <span style={{
                   fontSize: 10, padding: "1px 6px", borderRadius: 10,
-                  background: tab === t.id ? "#3b82f6" : "rgba(255,255,255,0.08)",
-                  color: tab === t.id ? "#fff" : "#64748b",
+                  background: tab === t.id ? "var(--warmy-orange)" : "var(--warmy-navy-4)",
+                  color: tab === t.id ? "#fff" : "var(--warmy-text-dim)",
                   fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
                 }}>{t.count}</span>
               )}
@@ -1820,12 +1937,12 @@ export default function App() {
             {/* Summary strip */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 24 }}>
               {[
-                { label: "Pending",  val: pendingTasks.length,  color: "#3b82f6" },
-                { label: "Urgent",   val: urgentCount,           color: "#ef4444" },
-                { label: "Sent",     val: sentTasks.length,      color: "#10b981" },
-                { label: "Pipeline", val: pipelinePending,       color: "#f59e0b" },
+                { label: "Pending",  val: pendingTasks.length,  color: "var(--warmy-orange)" },
+                { label: "Urgent",   val: urgentCount,           color: "var(--warmy-red)" },
+                { label: "Sent",     val: sentTasks.length,      color: "var(--warmy-green)" },
+                { label: "Pipeline", val: pipelinePending,       color: "var(--warmy-yellow)" },
               ].map(s => (
-                <div key={s.label} style={{ padding: "12px 14px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, borderTop: `2px solid ${s.color}` }}>
+                <div key={s.label} style={{ padding: "12px 14px", background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", borderRadius: 10, borderTop: `2px solid ${s.color}` }}>
                   <div style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", marginBottom: 5 }}>{s.label}</div>
                   <div style={{ fontSize: 26, fontWeight: 700, color: "#f8fafc", fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.val}</div>
                 </div>
