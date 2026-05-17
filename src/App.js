@@ -1421,6 +1421,133 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
   );
 }
 
+function PipelineTab({ pipeline, activePipeline, pipelineUrgent, pipelineLoading, pipelineError, pipelineLastSync, loadPipeline, aeFilter, onStageChange, onFollowUpDone, onLogActivity }) {
+  const [openSections, setOpenSections] = React.useState({ urgent: true, meeting_scheduled: false, proposal_sent: false, negotiation: false, closed: false });
+
+  const toggle = (key) => setOpenSections(p => ({ ...p, [key]: !p[key] }));
+
+  const urgent = activePipeline.filter(d => ["critical","high"].includes(getPipelineAction(d).urgency));
+  const byStage = {
+    meeting_scheduled: activePipeline.filter(d => d.stage === "meeting_scheduled"),
+    proposal_sent:     activePipeline.filter(d => d.stage === "proposal_sent"),
+    negotiation:       activePipeline.filter(d => d.stage === "negotiation"),
+  };
+  const closed = pipeline.filter(d => ["closed_won","closed_lost","disqualified"].includes(d.stage) && (aeFilter === "all" || d.ae === aeFilter));
+
+  const Section = ({ id, label, count, color, icon, isUrgent, children }) => {
+    const open = openSections[id];
+    return (
+      <div style={{ marginBottom: 8 }}>
+        <div onClick={() => toggle(id)} style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "12px 16px", cursor: "pointer", userSelect: "none",
+          background: isUrgent ? "rgba(248,81,73,0.06)" : "var(--warmy-navy-2)",
+          border: `1px solid ${isUrgent ? "rgba(248,81,73,0.3)" : "var(--warmy-border)"}`,
+          borderRadius: open ? "10px 10px 0 0" : 10,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 15 }}>{icon}</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: isUrgent ? "var(--warmy-red)" : "var(--warmy-text)" }}>{label}</span>
+            <span style={{ padding: "2px 10px", borderRadius: 20, background: `${color}18`, border: `1px solid ${color}35`, fontSize: 12, fontWeight: 700, color }}>{count}</span>
+            {isUrgent && count > 0 && <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--warmy-red)", animation: "pulse 1.2s ease infinite" }} />}
+          </div>
+          <span style={{ color: "var(--warmy-text-dim)", fontSize: 13, transition: "transform 0.2s", display: "inline-block", transform: open ? "rotate(180deg)" : "none" }}>▾</span>
+        </div>
+        {open && (
+          <div style={{ border: `1px solid ${isUrgent ? "rgba(248,81,73,0.2)" : "var(--warmy-border)"}`, borderTop: "none", borderRadius: "0 0 10px 10px", padding: "8px 8px 8px", background: "rgba(0,0,0,0.15)" }}>
+            {count === 0
+              ? <div style={{ padding: "16px", textAlign: "center", fontSize: 12, color: "var(--warmy-text-dim)" }}>No deals in this section</div>
+              : children
+            }
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ animation: "slideUp 0.3s ease" }}>
+      {/* Header */}
+      <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--warmy-text)", marginBottom: 4, letterSpacing: "-0.3px" }}>Pipeline Control</h2>
+          <p style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>
+            Live HubSpot · grouped by stage
+            {pipelineLastSync && <span style={{ color: "var(--warmy-text-dim)", marginLeft: 8 }}>· synced {pipelineLastSync.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>}
+          </p>
+        </div>
+        <button onClick={loadPipeline} disabled={pipelineLoading}
+          style={{ padding: "8px 14px", borderRadius: 8, background: "var(--warmy-navy-3)", border: "1px solid var(--warmy-border)", color: "var(--warmy-text-muted)", fontSize: 12, fontWeight: 600, cursor: pipelineLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ display: "inline-block", animation: pipelineLoading ? "spin 0.8s linear infinite" : "none" }}>⟳</span>
+          {pipelineLoading ? "Loading…" : "Refresh"}
+        </button>
+      </div>
+
+      {pipelineError && (
+        <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.25)", fontSize: 12, color: "var(--warmy-red)" }}>
+          {pipelineError.includes("HUBSPOT_TOKEN") ? "⚠ Add HUBSPOT_TOKEN to Render env vars" : `⚠ ${pipelineError}`}
+        </div>
+      )}
+
+      {pipelineLoading && activePipeline.length === 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[1,2,3].map(i => <div key={i} style={{ height: 56, borderRadius: 10, background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", animation: "pulse 1.5s ease infinite" }} />)}
+        </div>
+      )}
+
+      {/* ── 1. ACTION REQUIRED ── */}
+      <Section id="urgent" label="Action Required" count={urgent.length} color="var(--warmy-red)" icon="⚡" isUrgent={true}>
+        {[...urgent].sort((a,b) => {
+          const o = { critical: 0, high: 1 };
+          return (o[getPipelineAction(a).urgency]||1) - (o[getPipelineAction(b).urgency]||1);
+        }).map(deal => (
+          <PipelineDealCard key={deal.id} deal={deal} onStageChange={onStageChange} onFollowUpDone={onFollowUpDone} onLogActivity={onLogActivity} />
+        ))}
+      </Section>
+
+      {/* ── 2. MEETING SCHEDULED ── */}
+      <Section id="meeting_scheduled" label="Meeting Scheduled" count={byStage.meeting_scheduled.length} color={PIPELINE_STAGES.meeting_scheduled.color} icon="📅">
+        {byStage.meeting_scheduled.map(deal => (
+          <PipelineDealCard key={deal.id} deal={deal} onStageChange={onStageChange} onFollowUpDone={onFollowUpDone} onLogActivity={onLogActivity} />
+        ))}
+      </Section>
+
+      {/* ── 3. PRICE PROPOSAL SENT ── */}
+      <Section id="proposal_sent" label="Price Proposal Sent" count={byStage.proposal_sent.length} color={PIPELINE_STAGES.proposal_sent.color} icon="📄">
+        {[...byStage.proposal_sent].sort((a,b) => b.daysInStage - a.daysInStage).map(deal => (
+          <PipelineDealCard key={deal.id} deal={deal} onStageChange={onStageChange} onFollowUpDone={onFollowUpDone} onLogActivity={onLogActivity} />
+        ))}
+      </Section>
+
+      {/* ── 4. NEGOTIATION ── */}
+      <Section id="negotiation" label="Negotiation" count={byStage.negotiation.length} color={PIPELINE_STAGES.negotiation.color} icon="🤝">
+        {byStage.negotiation.map(deal => (
+          <PipelineDealCard key={deal.id} deal={deal} onStageChange={onStageChange} onFollowUpDone={onFollowUpDone} onLogActivity={onLogActivity} />
+        ))}
+      </Section>
+
+      {/* ── 5. CLOSED ── */}
+      {closed.length > 0 && (
+        <Section id="closed" label="Closed This Period" count={closed.length} color="var(--warmy-text-dim)" icon="✓">
+          {closed.map(deal => {
+            const s = PIPELINE_STAGES[deal.stage];
+            return (
+              <div key={deal.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 8, marginBottom: 4, background: "rgba(255,255,255,0.02)" }}>
+                <AEAvatar email={deal.ae} size={28} />
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--warmy-text-muted)" }}>{deal.contactName}</span>
+                  <span style={{ fontSize: 12, color: "var(--warmy-text-dim)", marginLeft: 8 }}>· {deal.company}</span>
+                </div>
+                <Badge label={s?.label || deal.stage} color={s?.color || "#64748b"} />
+              </div>
+            );
+          })}
+        </Section>
+      )}
+    </div>
+  );
+}
+
 function MeetingAnalysisCard({ analysis }) {
   const [expanded, setExpanded] = useState(false);
   const aeProfile = AE_PROFILES[analysis.ae];
@@ -1962,147 +2089,19 @@ export default function App() {
 
         {/* ════ PIPELINE CONTROL ════ */}
         {tab === "pipeline" && (
-          <div style={{ animation: "slideUp 0.3s ease" }}>
-
-            <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <div>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--warmy-text)", marginBottom: 4, letterSpacing: "-0.3px" }}>Pipeline Control</h2>
-                <p style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>
-                  Live HubSpot data — every deal, every stage, exactly as it is
-                  {pipelineLastSync && <span style={{ color: "var(--warmy-text-dim)", marginLeft: 8 }}>· synced {pipelineLastSync.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>}
-                </p>
-              </div>
-              <button
-                onClick={loadPipeline}
-                disabled={pipelineLoading}
-                style={{ padding: "8px 14px", borderRadius: 8, background: "var(--warmy-navy-3)", border: "1px solid var(--warmy-border)", color: "var(--warmy-text-muted)", fontSize: 12, fontWeight: 600, cursor: pipelineLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6 }}
-              >
-                <span style={{ display: "inline-block", animation: pipelineLoading ? "spin 0.8s linear infinite" : "none" }}>⟳</span>
-                {pipelineLoading ? "Loading…" : "Refresh from HubSpot"}
-              </button>
-            </div>
-
-            {/* Error banner */}
-            {pipelineError && (
-              <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.25)", fontSize: 12, color: "var(--warmy-red)" }}>
-                {pipelineError.includes("HUBSPOT_TOKEN") 
-                  ? "⚠ Add HUBSPOT_TOKEN to Render environment variables to enable live HubSpot sync"
-                  : `⚠ ${pipelineError}`}
-              </div>
-            )}
-
-            {/* Loading skeleton */}
-            {pipelineLoading && pipeline.length === 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {[1,2,3].map(i => (
-                  <div key={i} style={{ height: 64, borderRadius: 12, background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", animation: "pulse 1.5s ease infinite" }} />
-                ))}
-              </div>
-            )}
-
-            {/* Day rules */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 24 }}>
-              {[
-                { label: "Day 0", sub: "Proposal sent", color: "#10b981" },
-                { label: "Day 3", sub: "Follow-up due", color: "#f59e0b" },
-                { label: "Day 9", sub: "Negotiate or Lost", color: "#ef4444" },
-                { label: "Day 10", sub: "Auto-close", color: "#6b7280" },
-              ].map(r => (
-                <div key={r.label} style={{ padding: "10px 12px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderTop: `2px solid ${r.color}`, borderRadius: 8, textAlign: "center" }}>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: r.color, fontFamily: "'JetBrains Mono', monospace" }}>{r.label}</div>
-                  <div style={{ fontSize: 10, color: "#475569", marginTop: 3, lineHeight: 1.3 }}>{r.sub}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Stage counts */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 20, overflowX: "auto" }}>
-              {Object.entries(PIPELINE_STAGES).map(([key, s]) => {
-                const count = pipeline.filter(d => d.stage === key && (aeFilter === "all" || d.ae === aeFilter)).length;
-                if (count === 0 && ["closed_won","closed_lost","disqualified"].includes(key)) return null;
-                return (
-                  <div key={key} style={{ flex: 1, minWidth: 90, padding: "8px 10px", background: s.bg, border: `1px solid ${s.color}30`, borderRadius: 8, textAlign: "center" }}>
-                    <div style={{ fontSize: 20, fontWeight: 700, color: s.color, fontFamily: "'JetBrains Mono', monospace" }}>{count}</div>
-                    <div style={{ fontSize: 9, color: "#475569", marginTop: 2, lineHeight: 1.3 }}>{s.label}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Urgent banner */}
-            {pipelineUrgent.length > 0 && (
-              <div style={{ marginBottom: 20, padding: "12px 16px", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", animation: "pulse 1.2s ease infinite", flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: "#ef4444", fontWeight: 600 }}>
-                  {pipelineUrgent.length} deal{pipelineUrgent.length !== 1 ? "s" : ""} need immediate action today
-                </span>
-              </div>
-            )}
-
-            {/* AE checklist */}
-            <div style={{ marginBottom: 20, padding: "14px 16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>AE Owns These 4 Actions (Playbook)</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {[
-                  { icon: "✗", text: "No-show → Disqualified + written reason", color: "#8b5cf6" },
-                  { icon: "✉", text: "Day-3 follow-up → tick done in pipeline", color: "#f59e0b" },
-                  { icon: "→", text: "Day-9 decision → Negotiation or Closed Lost", color: "#ef4444" },
-                  { icon: "✎", text: "Log activity in Negotiation (resets 10-day clock)", color: "#3b82f6" },
-                ].map((r, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "#64748b" }}>
-                    <span style={{ color: r.color, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{r.icon}</span>
-                    {r.text}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Deal cards sorted by urgency */}
-            {activePipeline.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "40px 24px", color: "#334155" }}>
-                <div style={{ fontSize: 28, marginBottom: 10 }}>✓</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#475569" }}>Pipeline is clean — no active deals need action</div>
-              </div>
-            ) : (
-              <div>
-                {[...activePipeline]
-                  .sort((a, b) => {
-                    const order = { critical: 0, high: 1, medium: 2, low: 3, none: 4 };
-                    return (order[getPipelineAction(a).urgency] || 4) - (order[getPipelineAction(b).urgency] || 4);
-                  })
-                  .map(deal => (
-                    <PipelineDealCard
-                      key={deal.id}
-                      deal={deal}
-                      onStageChange={handlePipelineStageChange}
-                      onFollowUpDone={handleFollowUpDone}
-                      onLogActivity={handleLogActivity}
-                    />
-                  ))
-                }
-              </div>
-            )}
-
-            {/* Closed deals */}
-            {pipeline.filter(d => ["closed_won","closed_lost","disqualified"].includes(d.stage) && (aeFilter === "all" || d.ae === aeFilter)).length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <p style={{ margin: "0 0 10px", fontSize: 11, color: "#334155", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>Closed this period</p>
-                {pipeline.filter(d => ["closed_won","closed_lost","disqualified"].includes(d.stage) && (aeFilter === "all" || d.ae === aeFilter)).map(deal => {
-                  const s = PIPELINE_STAGES[deal.stage];
-                  return (
-                    <div key={deal.id} style={{ padding: "10px 14px", background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, marginBottom: 6, display: "flex", alignItems: "center", gap: 12 }}>
-                      <AEAvatar email={deal.ae} size={28} />
-                      <div style={{ flex: 1 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "#64748b" }}>{deal.contactName}</span>
-                        <span style={{ fontSize: 12, color: "#334155", marginLeft: 8 }}>· {deal.company}</span>
-                      </div>
-                      <Badge label={s.label} color={s.color} />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <PipelineTab
+            pipeline={pipeline}
+            activePipeline={activePipeline}
+            pipelineUrgent={pipelineUrgent}
+            pipelineLoading={pipelineLoading}
+            pipelineError={pipelineError}
+            pipelineLastSync={pipelineLastSync}
+            loadPipeline={loadPipeline}
+            aeFilter={aeFilter}
+            onStageChange={handlePipelineStageChange}
+            onFollowUpDone={handleFollowUpDone}
+            onLogActivity={handleLogActivity}
+          />
         )}
 
         {/* ════ MEETING ANALYSIS ════ */}
