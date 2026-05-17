@@ -54,7 +54,7 @@ app.post("/api/avoma-sync", async (req, res) => {
 
     const avomaResp = await fetch(aevomaUrl, {
       headers: {
-        "Authorization": `Token ${AVOMA_KEY}`,
+       "Authorization": `Bearer ${AVOMA_KEY}`,
         "Content-Type": "application/json",
       },
     });
