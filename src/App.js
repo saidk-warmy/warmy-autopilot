@@ -739,6 +739,151 @@ const MEETING_ANALYSES = [
   },
 ];
 
+const PIPELINE_STAGES = {
+  meeting_scheduled: { label: "Meeting Scheduled", color: "#64748b", bg: "rgba(100,116,139,0.12)", order: 0 },
+  proposal_sent:     { label: "Price Proposal Sent", color: "#3b82f6", bg: "rgba(59,130,246,0.12)", order: 1 },
+  negotiation:       { label: "Negotiation", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", order: 2 },
+  disqualified:      { label: "Disqualified", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", order: 3 },
+  closed_won:        { label: "Closed Won ✓", color: "#10b981", bg: "rgba(16,185,129,0.12)", order: 4 },
+  closed_lost:       { label: "Closed Lost", color: "#ef4444", bg: "rgba(239,68,68,0.12)", order: 5 },
+};
+
+// Compute what action is required and urgency based on playbook rules
+function getPipelineAction(deal) {
+  const d = deal.daysInStage;
+  const stage = deal.stage;
+
+  if (stage === "meeting_scheduled") {
+    if (deal.noShow) return { type: "mark_disqualified", label: "Mark No-Show / Disqualify", color: "#8b5cf6", urgency: "high", description: "Prospect didn't join — add disqualification reason and move on." };
+    return { type: "move_proposal", label: "Move → Price Proposal Sent", color: "#3b82f6", urgency: "medium", description: "Prospect joined the call. Move the deal to Price Proposal Sent and send the proposal." };
+  }
+  if (stage === "proposal_sent") {
+    if (d >= 10) return { type: "auto_close_warning", label: "⚠ Mark Closed Lost NOW", color: "#ef4444", urgency: "critical", description: `Day ${d} — AUTO-CLOSE triggered. No activity after Day 9. Mark lost immediately or it closes automatically.` };
+    if (d >= 9) return { type: "day9_decision", label: "Day 9 Decision Required", color: "#ef4444", urgency: "critical", description: "Final day. Move to Negotiation if discussions are alive, or mark Closed Lost." };
+    if (d >= 3 && !deal.followUpSentDay3) return { type: "day3_followup", label: "Send Day-3 Follow-up", color: "#f59e0b", urgency: "high", description: `Day ${d} — Follow-up is due. Send email, log activity in HubSpot, then mark this done.` };
+    if (d >= 3 && deal.followUpSentDay3) return { type: "waiting", label: "Waiting for reply", color: "#64748b", urgency: "low", description: `Follow-up sent on Day 3. Monitoring for reply.` };
+    return { type: "waiting", label: `Day ${d} of 10 — On track`, color: "#64748b", urgency: "low", description: `Proposal sent ${d} day${d !== 1 ? "s" : ""} ago. Day-3 follow-up will be due soon.` };
+  }
+  if (stage === "negotiation") {
+    if (d >= 10) return { type: "negotiation_auto_close", label: "⚠ Mark Closed Lost NOW", color: "#ef4444", urgency: "critical", description: `Day ${d} in Negotiation — 10-day cap hit. Log activity to reset clock or mark lost.` };
+    if (d >= 7) return { type: "negotiation_warning", label: "Log Activity or Close", color: "#f97316", urgency: "high", description: `Day ${d}/10 in Negotiation. ${10 - d} days left before auto-close. Log a call, email, or note.` };
+    return { type: "negotiation_active", label: `Day ${d}/10 in Negotiation`, color: "#f59e0b", urgency: "medium", description: "Keep activity logged. Silence for 10 days triggers auto-close." };
+  }
+  return { type: "none", label: "No action needed", color: "#10b981", urgency: "none", description: "Deal is in a terminal state." };
+}
+
+// Seeded pipeline deals from real HubSpot + Avoma data
+const INITIAL_PIPELINE = [
+  {
+    id: "P001", hubspotId: "60269536179",
+    contactName: "Muhammad Hussnain", contactEmail: "muhammad.hussnain@codingcops.com",
+    company: "CodingCops", ae: "felipev@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$500/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Felipe offered $5/mailbox × 100 = $500/mo. Offer valid until Tuesday. Muhammad needs head of sales approval.",
+  },
+  {
+    id: "P002", hubspotId: "60255907209",
+    contactName: "Scott Conlin", contactEmail: "scott@noveltylights.com",
+    company: "Novelty Lights", ae: "jorget@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$358/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Wants to start in June. Scott said he'd reach out next week. Seasonal business — Oct-Dec peak.",
+  },
+  {
+    id: "P003", hubspotId: "60234223726",
+    contactName: "Caitlin Marco", contactEmail: "caitlin.marco@opal.dev",
+    company: "Opal.dev", ae: "jorget@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$360 (90% prob)",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "HubSpot shows 90% close probability. High priority follow-up.",
+  },
+  {
+    id: "P004", hubspotId: "60072037522",
+    contactName: "Mat Sykes", contactEmail: "matthew.sykes@recolutiongroup.com",
+    company: "Recolution Group", ae: "sofiiar@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$290-440/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Sofiia promised post-call summary. Mat said 2 weeks to decide internally.",
+  },
+  {
+    id: "P005", hubspotId: "60249987662",
+    contactName: "Sabreena Shafi", contactEmail: "sabreena.shafi@cloudhire.ai",
+    company: "CloudHire.ai", ae: "sofiiar@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$435",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Proposal call completed. Sofiia promised summary + payment link.",
+  },
+  {
+    id: "P006", hubspotId: "60206388020",
+    contactName: "Jamie Anderson", contactEmail: "jamie.anderson@kodiakhub.com",
+    company: "KodiakHub", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 4, dealValue: "$450/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-13",
+    notes: "CFO approval needed by end of May. No reply yet. Day 3 follow-up overdue.",
+  },
+  {
+    id: "P007", hubspotId: "60221215634",
+    contactName: "Vihar Naik", contactEmail: "viharnaik@callhippo.com",
+    company: "CallHippo", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 4, dealValue: "$540",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-13",
+    notes: "Demo done May 13. No reply since. Day 3 follow-up overdue.",
+  },
+  {
+    id: "P008", hubspotId: "60204877705",
+    contactName: "Yuvraj Karle", contactEmail: "yuvraj@performifymedia.com",
+    company: "PerformifyMedia", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 4, dealValue: "$450",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-13",
+    notes: "Demo done May 13. No reply since. Day 3 follow-up overdue.",
+  },
+  {
+    id: "P009", hubspotId: "60176200355",
+    contactName: "Benjamin Kouba", contactEmail: "ben@leaf9.com",
+    company: "Leaf9", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 5, dealValue: "$49",
+    followUpSentDay3: true, noShow: false,
+    lastActivity: "2026-05-14",
+    notes: "Day 5. Follow-up sent. No reply. Approaching Day 9 decision point.",
+  },
+  {
+    id: "P010", hubspotId: "60180404892",
+    contactName: "Freddie Gonzalez", contactEmail: "freddie@pzerotalent.co",
+    company: "PzeroTalent", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 5, dealValue: "$210",
+    followUpSentDay3: true, noShow: false,
+    lastActivity: "2026-05-14",
+    notes: "Day 5. Follow-up sent. No reply. Approaching Day 9 decision point.",
+  },
+  {
+    id: "P011", hubspotId: "60254728339",
+    contactName: "Pedro Silva", contactEmail: "lfv1.cad@agemobi.com",
+    company: "Agemobi", ae: "jorget@warmy.io",
+    stage: "meeting_scheduled", daysInStage: 3, dealValue: "TBD",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-14",
+    notes: "Demo completed May 14. Needs to be moved to Price Proposal Sent.",
+  },
+  {
+    id: "P012", hubspotId: "60034986380",
+    contactName: "Matthias", contactEmail: "matthias@prospect.com",
+    company: "Unknown", ae: "sofiiar@warmy.io",
+    stage: "proposal_sent", daysInStage: 12, dealValue: "$679",
+    followUpSentDay3: true, noShow: false,
+    lastActivity: "2026-05-12",
+    notes: "Day 12 — PAST AUTO-CLOSE threshold. HubSpot deal at 50% probability. Needs immediate action.",
+  },
+];
+
 const MCP = [
   { type: "url", url: "https://mcp.hubspot.com/anthropic",      name: "hubspot" },
   { type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1", name: "gmail"   },
