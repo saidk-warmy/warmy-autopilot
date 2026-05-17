@@ -102,7 +102,7 @@ app.post("/api/avoma-sync", async (req, res) => {
           `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
           {
             headers: {
-              "Authorization": `Token ${AVOMA_KEY}`,
+              "Authorization": `Bearer ${AVOMA_KEY}`,
               "Content-Type": "application/json",
             },
           }
