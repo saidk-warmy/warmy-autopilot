@@ -1478,7 +1478,7 @@ export default function App() {
   };
 
   // Load on mount
-  React.useEffect(() => { loadPipeline(); }, []);
+  useEffect(() => { loadPipeline(); }, []);
   const [aeFilter, setAeFilter] = useState("all");
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
