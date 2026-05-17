@@ -897,7 +897,6 @@ async function callClaude(system, userMsg) {
       model: "claude-sonnet-4-5",
       max_tokens: 1000,
       system, messages: [{ role: "user", content: userMsg }],
-      mcp_servers: MCP,
     }),
   });
   if (!r.ok) throw new Error(`API ${r.status}`);
