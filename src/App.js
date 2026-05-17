@@ -675,6 +675,7 @@ ${stage === "Closed Lost" ? '4. Set loss reason: "No response after 4 follow-up 
             <span style={{ fontSize: 12, color: "#64748b" }}>{task.company}</span>
             <Badge label={fuConfig.badge} color={fuConfig.color} />
             {task.daysSinceMeeting >= 6 && <Badge label={`${task.daysSinceMeeting}d`} color={urgencyColor} />}
+            {task.isNew && <Badge label="NEW" color="#10b981" />}
           </div>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
@@ -920,11 +921,79 @@ export default function App() {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "sent" } : t));
   };
 
+  const [syncLog, setSyncLog] = useState([]);
+  const [syncError, setSyncError] = useState(null);
+
   const handleSync = async () => {
     setSyncing(true);
-    await new Promise(r => setTimeout(r, 2000));
-    setLastSync(new Date());
-    setSyncing(false);
+    setSyncError(null);
+    setSyncLog([]);
+
+    try {
+      // Pass existing meeting/transcript IDs so the server skips already-known meetings
+      const existingMeetingIds = tasks
+        .map(t => t.transcriptId)
+        .filter(Boolean);
+
+      const resp = await fetch("/api/avoma-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ existingMeetingIds }),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok || data.error) {
+        setSyncError(data.error || "Sync failed");
+        return;
+      }
+
+      const { newTasks, message, processed, totalFound } = data;
+
+      setSyncLog([
+        `Scanned ${totalFound} meetings from Avoma`,
+        `${processed} new completed meetings found`,
+        message,
+      ]);
+
+      if (newTasks && newTasks.length > 0) {
+        // Update daysSinceMeeting for all existing tasks too
+        setTasks(prev => {
+          const updated = prev.map(t => ({
+            ...t,
+            daysSinceMeeting: Math.floor(
+              (Date.now() - new Date(t.meetingDate + "T12:00:00Z").getTime()) / (1000 * 60 * 60 * 24)
+            ),
+            // Auto-escalate follow-up type based on days
+            type: t.status === "pending" ? (
+              t.daysSinceMeeting >= 9 ? "fu4" :
+              t.daysSinceMeeting >= 6 ? "fu3" :
+              t.daysSinceMeeting >= 3 ? "fu2" : t.type
+            ) : t.type,
+          }));
+          return [...updated, ...newTasks];
+        });
+      } else {
+        // Still update days on existing tasks
+        setTasks(prev => prev.map(t => ({
+          ...t,
+          daysSinceMeeting: Math.floor(
+            (Date.now() - new Date(t.meetingDate + "T12:00:00Z").getTime()) / (1000 * 60 * 60 * 24)
+          ),
+          type: t.status === "pending" ? (
+            t.daysSinceMeeting >= 9 ? "fu4" :
+            t.daysSinceMeeting >= 6 ? "fu3" :
+            t.daysSinceMeeting >= 3 ? "fu2" : t.type
+          ) : t.type,
+        })));
+      }
+
+      setLastSync(new Date());
+    } catch (err) {
+      setSyncError(err.message);
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const urgentCount = pendingTasks.filter(t => t.daysSinceMeeting >= 6).length;
@@ -1010,6 +1079,18 @@ export default function App() {
             {syncing ? "Syncing…" : "Sync Avoma"}
           </button>
         </div>
+
+        {/* Sync result banner */}
+        {syncError && (
+          <div style={{ marginTop: 6, padding: "6px 12px", borderRadius: 6, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", fontSize: 11, color: "#ef4444", fontFamily: "'JetBrains Mono', monospace" }}>
+            ✗ {syncError.includes("AVOMA_API_KEY") ? "Add AVOMA_API_KEY to Render environment variables to enable live sync" : syncError}
+          </div>
+        )}
+        {!syncError && syncLog.length > 0 && (
+          <div style={{ marginTop: 6, padding: "6px 12px", borderRadius: 6, background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", fontSize: 11, color: "#10b981", fontFamily: "'JetBrains Mono', monospace" }}>
+            {syncLog.map((l, i) => <div key={i}>✓ {l}</div>)}
+          </div>
+        )}
       </div>
 
       {/* ── TABS + AE FILTER ── */}
