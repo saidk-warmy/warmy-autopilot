@@ -772,118 +772,8 @@ function getPipelineAction(deal) {
   return { type: "none", label: "No action needed", color: "#10b981", urgency: "none", description: "Deal is in a terminal state." };
 }
 
-// Seeded pipeline deals from real HubSpot + Avoma data
-const INITIAL_PIPELINE = [
-  {
-    id: "P001", hubspotId: "60269536179",
-    contactName: "Muhammad Hussnain", contactEmail: "muhammad.hussnain@codingcops.com",
-    company: "CodingCops", ae: "felipev@warmy.io",
-    stage: "proposal_sent", daysInStage: 2, dealValue: "$500/mo",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-15",
-    notes: "Felipe offered $5/mailbox × 100 = $500/mo. Offer valid until Tuesday. Muhammad needs head of sales approval.",
-  },
-  {
-    id: "P002", hubspotId: "60255907209",
-    contactName: "Scott Conlin", contactEmail: "scott@noveltylights.com",
-    company: "Novelty Lights", ae: "jorget@warmy.io",
-    stage: "proposal_sent", daysInStage: 2, dealValue: "$358/mo",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-15",
-    notes: "Wants to start in June. Scott said he'd reach out next week. Seasonal business — Oct-Dec peak.",
-  },
-  {
-    id: "P003", hubspotId: "60234223726",
-    contactName: "Caitlin Marco", contactEmail: "caitlin.marco@opal.dev",
-    company: "Opal.dev", ae: "jorget@warmy.io",
-    stage: "proposal_sent", daysInStage: 2, dealValue: "$360 (90% prob)",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-15",
-    notes: "HubSpot shows 90% close probability. High priority follow-up.",
-  },
-  {
-    id: "P004", hubspotId: "60072037522",
-    contactName: "Mat Sykes", contactEmail: "matthew.sykes@recolutiongroup.com",
-    company: "Recolution Group", ae: "sofiiar@warmy.io",
-    stage: "proposal_sent", daysInStage: 2, dealValue: "$290-440/mo",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-15",
-    notes: "Sofiia promised post-call summary. Mat said 2 weeks to decide internally.",
-  },
-  {
-    id: "P005", hubspotId: "60249987662",
-    contactName: "Sabreena Shafi", contactEmail: "sabreena.shafi@cloudhire.ai",
-    company: "CloudHire.ai", ae: "sofiiar@warmy.io",
-    stage: "proposal_sent", daysInStage: 2, dealValue: "$435",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-15",
-    notes: "Proposal call completed. Sofiia promised summary + payment link.",
-  },
-  {
-    id: "P006", hubspotId: "60206388020",
-    contactName: "Jamie Anderson", contactEmail: "jamie.anderson@kodiakhub.com",
-    company: "KodiakHub", ae: "gokhank@warmy.io",
-    stage: "proposal_sent", daysInStage: 4, dealValue: "$450/mo",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-13",
-    notes: "CFO approval needed by end of May. No reply yet. Day 3 follow-up overdue.",
-  },
-  {
-    id: "P007", hubspotId: "60221215634",
-    contactName: "Vihar Naik", contactEmail: "viharnaik@callhippo.com",
-    company: "CallHippo", ae: "gokhank@warmy.io",
-    stage: "proposal_sent", daysInStage: 4, dealValue: "$540",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-13",
-    notes: "Demo done May 13. No reply since. Day 3 follow-up overdue.",
-  },
-  {
-    id: "P008", hubspotId: "60204877705",
-    contactName: "Yuvraj Karle", contactEmail: "yuvraj@performifymedia.com",
-    company: "PerformifyMedia", ae: "gokhank@warmy.io",
-    stage: "proposal_sent", daysInStage: 4, dealValue: "$450",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-13",
-    notes: "Demo done May 13. No reply since. Day 3 follow-up overdue.",
-  },
-  {
-    id: "P009", hubspotId: "60176200355",
-    contactName: "Benjamin Kouba", contactEmail: "ben@leaf9.com",
-    company: "Leaf9", ae: "gokhank@warmy.io",
-    stage: "proposal_sent", daysInStage: 5, dealValue: "$49",
-    followUpSentDay3: true, noShow: false,
-    lastActivity: "2026-05-14",
-    notes: "Day 5. Follow-up sent. No reply. Approaching Day 9 decision point.",
-  },
-  {
-    id: "P010", hubspotId: "60180404892",
-    contactName: "Freddie Gonzalez", contactEmail: "freddie@pzerotalent.co",
-    company: "PzeroTalent", ae: "gokhank@warmy.io",
-    stage: "proposal_sent", daysInStage: 5, dealValue: "$210",
-    followUpSentDay3: true, noShow: false,
-    lastActivity: "2026-05-14",
-    notes: "Day 5. Follow-up sent. No reply. Approaching Day 9 decision point.",
-  },
-  {
-    id: "P011", hubspotId: "60254728339",
-    contactName: "Pedro Silva", contactEmail: "lfv1.cad@agemobi.com",
-    company: "Agemobi", ae: "jorget@warmy.io",
-    stage: "meeting_scheduled", daysInStage: 3, dealValue: "TBD",
-    followUpSentDay3: false, noShow: false,
-    lastActivity: "2026-05-14",
-    notes: "Demo completed May 14. Needs to be moved to Price Proposal Sent.",
-  },
-  {
-    id: "P012", hubspotId: "60034986380",
-    contactName: "Matthias", contactEmail: "matthias@prospect.com",
-    company: "Unknown", ae: "sofiiar@warmy.io",
-    stage: "proposal_sent", daysInStage: 12, dealValue: "$679",
-    followUpSentDay3: true, noShow: false,
-    lastActivity: "2026-05-12",
-    notes: "Day 12 — PAST AUTO-CLOSE threshold. HubSpot deal at 50% probability. Needs immediate action.",
-  },
-];
-
+// Pipeline is loaded live from HubSpot on app start — see useEffect below
+const INITIAL_PIPELINE = [];
 const MCP = [
   { type: "url", url: "https://mcp.hubspot.com/anthropic",      name: "hubspot" },
   { type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1", name: "gmail"   },
@@ -1563,6 +1453,32 @@ export default function App() {
   const [tasks, setTasks]       = useState(INITIAL_TASKS);
   const [tab, setTab]           = useState("tasks");
   const [pipeline, setPipeline] = useState(INITIAL_PIPELINE);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [pipelineError, setPipelineError]     = useState(null);
+  const [pipelineLastSync, setPipelineLastSync] = useState(null);
+
+  // Load live pipeline from HubSpot on mount
+  const loadPipeline = async () => {
+    setPipelineLoading(true);
+    setPipelineError(null);
+    try {
+      const resp = await fetch("/api/hubspot-pipeline");
+      const data = await resp.json();
+      if (!resp.ok || data.error) {
+        setPipelineError(data.error || "HubSpot sync failed");
+        return;
+      }
+      setPipeline(data.pipeline || []);
+      setPipelineLastSync(new Date());
+    } catch (err) {
+      setPipelineError(err.message);
+    } finally {
+      setPipelineLoading(false);
+    }
+  };
+
+  // Load on mount
+  React.useEffect(() => { loadPipeline(); }, []);
   const [aeFilter, setAeFilter] = useState("all");
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
@@ -2006,12 +1922,41 @@ export default function App() {
         {tab === "pipeline" && (
           <div style={{ animation: "slideUp 0.3s ease" }}>
 
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Pipeline Control</h2>
-              <p style={{ fontSize: 13, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
-                Playbook-driven — every step of the deal, one click to action
-              </p>
+            <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--warmy-text)", marginBottom: 4, letterSpacing: "-0.3px" }}>Pipeline Control</h2>
+                <p style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>
+                  Live HubSpot data — every deal, every stage, exactly as it is
+                  {pipelineLastSync && <span style={{ color: "var(--warmy-text-dim)", marginLeft: 8 }}>· synced {pipelineLastSync.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>}
+                </p>
+              </div>
+              <button
+                onClick={loadPipeline}
+                disabled={pipelineLoading}
+                style={{ padding: "8px 14px", borderRadius: 8, background: "var(--warmy-navy-3)", border: "1px solid var(--warmy-border)", color: "var(--warmy-text-muted)", fontSize: 12, fontWeight: 600, cursor: pipelineLoading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6 }}
+              >
+                <span style={{ display: "inline-block", animation: pipelineLoading ? "spin 0.8s linear infinite" : "none" }}>⟳</span>
+                {pipelineLoading ? "Loading…" : "Refresh from HubSpot"}
+              </button>
             </div>
+
+            {/* Error banner */}
+            {pipelineError && (
+              <div style={{ marginBottom: 16, padding: "10px 14px", borderRadius: 8, background: "rgba(248,81,73,0.08)", border: "1px solid rgba(248,81,73,0.25)", fontSize: 12, color: "var(--warmy-red)" }}>
+                {pipelineError.includes("HUBSPOT_TOKEN") 
+                  ? "⚠ Add HUBSPOT_TOKEN to Render environment variables to enable live HubSpot sync"
+                  : `⚠ ${pipelineError}`}
+              </div>
+            )}
+
+            {/* Loading skeleton */}
+            {pipelineLoading && pipeline.length === 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[1,2,3].map(i => (
+                  <div key={i} style={{ height: 64, borderRadius: 12, background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", animation: "pulse 1.5s ease infinite" }} />
+                ))}
+              </div>
+            )}
 
             {/* Day rules */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 24 }}>

@@ -19,7 +19,6 @@ app.post("/api/claude", async (req, res) => {
         "Content-Type": "application/json",
         "x-api-key": process.env.ANTHROPIC_API_KEY,
         "anthropic-version": "2023-06-01",
-        "anthropic-beta": "mcp-client-2025-04-04",
       },
       body: JSON.stringify(req.body),
     });
@@ -27,6 +26,119 @@ app.post("/api/claude", async (req, res) => {
     res.status(response.status).json(data);
   } catch (err) {
     res.status(500).json({ error: { message: err.message } });
+  }
+});
+
+/* ─────────────────────────────────────────────────────
+   /api/hubspot-pipeline — Pull live deal stages for AE team
+───────────────────────────────────────────────────── */
+app.get("/api/hubspot-pipeline", async (req, res) => {
+  const HS_TOKEN = process.env.HUBSPOT_TOKEN;
+  if (!HS_TOKEN) {
+    return res.status(400).json({ error: "HUBSPOT_TOKEN not set in environment variables" });
+  }
+
+  const AE_OWNER_IDS = ["88489253", "87333667", "75485407", "91804682", "79157594"];
+  const PIPELINE_ID = "41302146";
+
+  // Stage ID → label + internal key mapping
+  const STAGE_MAP = {
+    "86886808": { key: "meeting_scheduled", label: "Meeting Scheduled" },
+    "86886810": { key: "proposal_sent",     label: "Price Proposal Sent" },
+    "86886811": { key: "negotiation",       label: "Negotiation" },
+    "86886813": { key: "closed_won",        label: "Closed Won ✓" },
+    "86886814": { key: "closed_lost",       label: "Closed Lost" },
+    "86907056": { key: "disqualified",      label: "Disqualified" },
+  };
+
+  try {
+    const { default: fetch } = await import("node-fetch");
+
+    // Search HubSpot for all deals owned by AEs in the main pipeline
+    const searchBody = {
+      filterGroups: [{
+        filters: [
+          { propertyName: "pipeline", operator: "EQ", value: PIPELINE_ID },
+          { propertyName: "hubspot_owner_id", operator: "IN", values: AE_OWNER_IDS },
+        ]
+      }],
+      properties: [
+        "dealname", "dealstage", "amount", "hubspot_owner_id",
+        "hs_lastmodifieddate", "createdate", "closedate",
+        "hs_deal_stage_probability", "notes_last_contacted"
+      ],
+      sorts: [{ propertyName: "hs_lastmodifieddate", direction: "DESCENDING" }],
+      limit: 200,
+    };
+
+    const hsResp = await fetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${HS_TOKEN}`,
+      },
+      body: JSON.stringify(searchBody),
+    });
+
+    if (!hsResp.ok) {
+      const err = await hsResp.text();
+      return res.status(500).json({ error: `HubSpot API error: ${hsResp.status} — ${err}` });
+    }
+
+    const hsData = await hsResp.json();
+    const deals = hsData.results || [];
+
+    // Map owner IDs to AE emails
+    const OWNER_EMAIL_MAP = {
+      "88489253": "felipev@warmy.io",
+      "87333667": "jorget@warmy.io",
+      "75485407": "sofiiar@warmy.io",
+      "91804682": "gokhank@warmy.io",
+      "79157594": "saidk@warmy.io",
+    };
+
+    const pipeline = deals.map(deal => {
+      const p = deal.properties;
+      const stageId = p.dealstage || "";
+      const stageInfo = STAGE_MAP[stageId] || { key: "meeting_scheduled", label: p.dealstage || "Unknown" };
+
+      // Calculate days in current stage from last modified date
+      const lastModified = new Date(p.hs_lastmodifieddate || p.createdate);
+      const daysInStage = Math.floor((Date.now() - lastModified.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Extract contact name from deal name (format: "Name <> Warmy.io -date")
+      const dealName = p.dealname || "";
+      const contactName = dealName.replace(/<> Warmy\.io.*$/i, "").replace(/-\d+\/\d+\/\d+.*$/, "").trim() || dealName;
+
+      return {
+        id: `HS_${deal.id}`,
+        hubspotId: deal.id,
+        contactName,
+        contactEmail: "",
+        company: dealName,
+        ae: OWNER_EMAIL_MAP[p.hubspot_owner_id] || "gokhank@warmy.io",
+        stage: stageInfo.key,
+        stageLabel: stageInfo.label,
+        daysInStage: Math.max(0, daysInStage),
+        dealValue: p.amount ? `$${parseFloat(p.amount).toFixed(0)}` : "TBD",
+        followUpSentDay3: false,
+        noShow: stageInfo.key === "disqualified",
+        lastActivity: p.hs_lastmodifieddate?.split("T")[0] || new Date().toISOString().split("T")[0],
+        notes: `HubSpot: ${stageInfo.label}${p.amount ? ` · $${p.amount}` : ""}`,
+        closedate: p.closedate,
+        probability: p.hs_deal_stage_probability,
+      };
+    });
+
+    res.json({
+      pipeline,
+      total: pipeline.length,
+      synced_at: new Date().toISOString(),
+    });
+
+  } catch (err) {
+    console.error("HubSpot pipeline sync error:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -54,7 +166,7 @@ app.post("/api/avoma-sync", async (req, res) => {
 
     const avomaResp = await fetch(aevomaUrl, {
       headers: {
-       "Authorization": `Bearer ${AVOMA_KEY}`,
+        "Authorization": `Token ${AVOMA_KEY}`,
         "Content-Type": "application/json",
       },
     });
@@ -102,7 +214,7 @@ app.post("/api/avoma-sync", async (req, res) => {
           `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
           {
             headers: {
-              "Authorization": `Bearer ${AVOMA_KEY}`,
+              "Authorization": `Token ${AVOMA_KEY}`,
               "Content-Type": "application/json",
             },
           }
