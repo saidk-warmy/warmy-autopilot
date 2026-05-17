@@ -557,7 +557,7 @@ function TaskCard({ task, onDraftGenerated, onSend, onPipelineAction, onDismiss 
   const [expanded, setExpanded] = useState(task.status === "pending" && !task.draft);
   const [pipelineChoice, setPipelineChoice] = useState(null); // "close_lost" | "negotiation"
 
-  const fuConfig = FU_CONFIG[task.type];
+  const fuConfig = FU_CONFIG[task.type] || FU_CONFIG["fu1"];
   const aeProfile = AE_PROFILES[task.ae];
   const isLastFU = task.type === "fu4";
   const urgency = task.daysSinceMeeting >= 9 ? "high" : task.daysSinceMeeting >= 6 ? "mid" : "low";
