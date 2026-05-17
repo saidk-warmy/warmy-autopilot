@@ -952,7 +952,7 @@ function Badge({ label, color, size = "sm" }) {
 
 function HubSpotLink({ dealId, contactName }) {
   if (!dealId) return null;
-  const url = `https://app.hubspot.com/contacts/warmy/deal/${dealId}`;
+  const url = `https://app.hubspot.com/deals/19511446/${dealId}`;
   return (
     <a href={url} target="_blank" rel="noopener noreferrer" className="hubspot-btn" title={`Open ${contactName} in HubSpot`}>
       <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
