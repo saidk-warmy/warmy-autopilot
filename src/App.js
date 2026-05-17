@@ -1,143 +1,259 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 
-/* ─────────────────────────────────────────────
-   REAL CONTEXT FROM AVOMA TRANSCRIPTS
-   ───────────────────────────────────────────── */
-const SAID_STYLE = {
-  greeting: "Hi [Name],",
-  closing: "Cheers,\nSaid",
-  tone: "direct, warm, consultative",
-  avgWords: 75,
-  patterns: [
-    "Yeah I mean, look —",
-    "Alright, so here's the thing:",
-    "Exactly, and by the way,",
-    "So just to make sure I understand,",
-  ],
-  cta: "Does [time] work for a quick call?",
-  notes:
-    "Concise. Personalized to their exact use case. Never sounds templated. Mentions specific features relevant to them (SES integration, seed list, expert). Moves fast to next steps.",
+/* ═══════════════════════════════════════════════════════
+   AE STYLE PROFILES — learned from Avoma transcripts
+═══════════════════════════════════════════════════════ */
+const AE_PROFILES = {
+  "saidk@warmy.io": {
+    name: "Said Karaca", initials: "SK", color: "#f59e0b",
+    greeting: "Hi [Name],", closing: "Cheers,\nSaid",
+    tone: "direct, warm, consultative. Gets to the point fast. References the exact things discussed on the call.",
+    avgWords: 75, role: "Head of Sales",
+    phrases: ["Yeah I mean, look —", "Alright, so here's the thing:", "Exactly, and by the way,"],
+  },
+  "gokhank@warmy.io": {
+    name: "Gokhan Koluman", initials: "GK", color: "#3b82f6",
+    greeting: "Hi [Name],", closing: "Best,\nGokhan",
+    tone: "educational, structured, builds trust through expertise. Explains the 'why' behind everything. Consultative.",
+    avgWords: 100, role: "AE",
+    phrases: ["Just to clarify,", "As I mentioned on the call,", "When it comes to"],
+  },
+  "felipev@warmy.io": {
+    name: "Felipe Vargas", initials: "FV", color: "#10b981",
+    greeting: "Hey [Name],", closing: "Cheers,\nFelipe",
+    tone: "energetic, casual but professional. Moves fast. Friendly and direct.",
+    avgWords: 65, role: "AE",
+    phrases: ["Quick one —", "Following up from our call,", "Just checking in —"],
+  },
+  "sofiiar@warmy.io": {
+    name: "Sofiia Rapatska", initials: "SR", color: "#8b5cf6",
+    greeting: "Hi [Name],", closing: "Best,\nSofiia",
+    tone: "professional, product-focused, precise. References specific platform features discussed.",
+    avgWords: 80, role: "AE / Demo",
+    phrases: ["As we discussed during the demo,", "Just to recap what we covered,", "Happy to clarify"],
+  },
+  "jorget@warmy.io": {
+    name: "Jorge Marttins", initials: "JM", color: "#ef4444",
+    greeting: "Hi [Name],", closing: "Best,\nJorge",
+    tone: "professional, straightforward, action-oriented.",
+    avgWords: 70, role: "AE",
+    phrases: ["Following up from our conversation,", "As discussed,", "Reaching out to"],
+  },
 };
 
-const TEAM = [
-  { name: "Said Karaca",     email: "saidk@warmy.io",   role: "Head of Sales",        avatar: "SK" },
-  { name: "Gokhan Koluman",  email: "gokhank@warmy.io", role: "AE",                   avatar: "GK" },
-  { name: "Jorge Marttins",  email: "jorget@warmy.io",  role: "AE",                   avatar: "JM" },
-  { name: "Felipe Vargas",   email: "felipev@warmy.io", role: "AE",                   avatar: "FV" },
-  { name: "Sofiia Rapatska", email: "sofiiar@warmy.io", role: "AE / Demo",            avatar: "SR" },
-  { name: "James Pinhorn",   email: "jamesp@warmy.io",  role: "SDR / BDR Head",       avatar: "JP" },
+/* ═══════════════════════════════════════════════════════
+   FOLLOW-UP SEQUENCE CONFIG
+═══════════════════════════════════════════════════════ */
+const FU_CONFIG = {
+  fu1: {
+    label: "Post-Meeting Follow-up",
+    day: 0,
+    badge: "FU1",
+    color: "#3b82f6",
+    instruction: "Thank them for the meeting. Recap the 2-3 KEY things discussed (be specific — names, numbers, use cases). Confirm agreed next steps. Excited, warm tone. Under 90 words.",
+    pipelineAction: "Move to Price Proposal Sent",
+    pipelineStage: "Price Proposal Sent",
+  },
+  fu2: {
+    label: "3-Day Follow-up",
+    day: 3,
+    badge: "FU2",
+    color: "#f59e0b",
+    instruction: "Brief, low-pressure check-in. Reference the previous email naturally. Ask one direct question to keep things moving. Under 60 words.",
+    pipelineAction: null,
+  },
+  fu3: {
+    label: "6-Day Follow-up",
+    day: 6,
+    badge: "FU3",
+    color: "#f97316",
+    instruction: "Honest and direct. Offer a specific piece of value (insight, resource) relevant to their use case. Soft CTA. Under 60 words.",
+    pipelineAction: null,
+  },
+  fu4: {
+    label: "9-Day Final Follow-up",
+    day: 9,
+    badge: "FU4",
+    color: "#ef4444",
+    instruction: "Final check-in before closing the file. Honest — tell them you're checking in one last time. Make it easy to say yes or no. Under 50 words.",
+    pipelineAction: "Close Lost or Negotiation",
+    pipelineStage: "Closed Lost",
+  },
+};
+
+/* ═══════════════════════════════════════════════════════
+   SEEDED PIPELINE — from real Avoma transcripts
+═══════════════════════════════════════════════════════ */
+const INITIAL_TASKS = [
+  {
+    id: "T001", dealId: "MAX_001", type: "fu2",
+    contactName: "Max Nyirenda", contactEmail: "max.nyirenda@goinspire.co.uk",
+    company: "GoInspire", ae: "saidk@warmy.io",
+    meetingDate: "2026-05-14", daysSinceMeeting: 2,
+    dealStage: "Price Proposal Sent", dealValue: "$1,900/mo",
+    meetingContext: "Upsell call. Two new domains for EE telecom campaigns. Amazon SES integration. 10k daily seed list recommended. Offered $1,600/mo with 15% testimonial discount. Annual = $16k/yr. Max needs CTO (Sat) sign-off. Said promised to send comparison email seed list vs standard.",
+    transcriptId: "1af383c9-640a-4515-8044-310c37375e6d",
+    status: "pending", draft: "", pipelineStatus: "done",
+  },
+  {
+    id: "T002", dealId: "BILL_001", type: "fu1",
+    contactName: "Bill Bowden", contactEmail: "bill@maior.ai",
+    company: "maior.ai (lending)", ae: "gokhank@warmy.io",
+    meetingDate: "2026-05-14", daysSinceMeeting: 1,
+    dealStage: "Demo Done", dealValue: "~$25–39/mailbox × 5",
+    meetingContext: "Demo with Bill + Craig. HTML emails tanked deliverability on Apollo. Google Workspace, 5 mailboxes, 50 emails/day. Comparing vs MX Tools ($129/mo). Sofiia showed platform demo. Bill said 'sounds extremely fair' and open to annual. Decision pending CEO approval. Expected answer next day.",
+    transcriptId: "c014a5a1-ae9b-4131-a15f-691f274b6dd1",
+    status: "pending", draft: "", pipelineStatus: "pending",
+  },
+  {
+    id: "T003", dealId: "JACK_001", type: "fu2",
+    contactName: "Jamie Anderson", contactEmail: "jamie.anderson@kodiakhub.com",
+    company: "KodiakHub", ae: "gokhank@warmy.io",
+    meetingDate: "2026-05-13", daysSinceMeeting: 2,
+    dealStage: "Price Proposal Sent", dealValue: "$4,500/yr (30 mailboxes)",
+    meetingContext: "Jack Butzu + Jamie Anderson. Stockholm. 10 SDRs, 50 emails/day, Microsoft 365. Never done warming. Offered 30 mailboxes × $15/mo = $450/mo or $4,500/yr. Jamie needs CFO approval. Timeline end of May. Also cc Jack Butzu (jack.butzu@kodiakhub.com).",
+    transcriptId: "5cb81583-90a8-465a-bde1-346e6f24556f",
+    status: "pending", draft: "", pipelineStatus: "done",
+  },
+  {
+    id: "T004", dealId: "VIHAR_001", type: "fu1",
+    contactName: "Vihar Naik", contactEmail: "viharnaik@callhippo.com",
+    company: "CallHippo", ae: "gokhank@warmy.io",
+    meetingDate: "2026-05-13", daysSinceMeeting: 2,
+    dealStage: "Demo Done", dealValue: "TBD",
+    meetingContext: "Demo completed May 13. CallHippo is a VoIP/communication platform. Outcome: Scheduled (next step agreed). Gokhan + Sofiia on the call.",
+    transcriptId: "9f77a6cd-01fa-459d-9000-c716e8bad583",
+    status: "pending", draft: "", pipelineStatus: "pending",
+  },
+  {
+    id: "T005", dealId: "YUVRAJ_001", type: "fu2",
+    contactName: "Yuvraj Karle", contactEmail: "yuvraj@performifymedia.com",
+    company: "PerformifyMedia", ae: "gokhank@warmy.io",
+    meetingDate: "2026-05-13", daysSinceMeeting: 2,
+    dealStage: "Price Proposal Sent", dealValue: "TBD",
+    meetingContext: "Demo completed May 13. Outcome: Scheduled. Performance media company. Gokhan ran the call.",
+    transcriptId: "22658dde-fe87-4670-bbaf-285b07184e56",
+    status: "pending", draft: "", pipelineStatus: "done",
+  },
+  {
+    id: "T006", dealId: "BEN_001", type: "fu3",
+    contactName: "Benjamin Kouba", contactEmail: "ben@leaf9.com",
+    company: "Leaf9", ae: "gokhank@warmy.io",
+    meetingDate: "2026-05-12", daysSinceMeeting: 3,
+    dealStage: "Price Proposal Sent", dealValue: "TBD",
+    meetingContext: "Demo May 12. Outcome: Scheduled. Gokhan ran the call. No reply since.",
+    transcriptId: "e71b4e61-6be7-4966-b655-927e475e82fd",
+    status: "pending", draft: "", pipelineStatus: "done",
+  },
+  {
+    id: "T007", dealId: "FREDDIE_001", type: "fu3",
+    contactName: "Freddie Gonzalez", contactEmail: "freddie@pzerotalent.co",
+    company: "PzeroTalent", ae: "gokhank@warmy.io",
+    meetingDate: "2026-05-12", daysSinceMeeting: 3,
+    dealStage: "Price Proposal Sent", dealValue: "TBD",
+    meetingContext: "Demo May 12. Outcome: Scheduled. No reply since. Gokhan ran the call.",
+    transcriptId: "d3b94f29-d8e5-4bb8-bab3-1bc8aba044cf",
+    status: "pending", draft: "", pipelineStatus: "done",
+  },
 ];
 
-// Pre-seeded from real Avoma transcripts — enriched with exact deal context
-const SEEDED_DEALS = [
+const MEETING_ANALYSES = [
   {
-    id: "MAX_001",
-    contactName: "Max Nyirenda",
-    contactEmail: "max.nyirenda@goinspire.co.uk",
-    company: "GoInspire (EE campaign)",
-    dealStage: "Proposal Sent",
-    type: "Upsell",
-    daysSinceEmail: 2,
-    hasReply: false,
-    action: "followup_2",
-    ae: "Said Karaca",
-    value: "$1,900/mo or $19k/yr",
-    context:
-      "Two calls total. Demo (May 13) + upsell (May 14). Wants 2 new domains warmed — 10k daily seed list via Amazon SES integration. 400–500k campaign for EE telecom. Offered 15% discount ($1,600/mo) in exchange for testimonial. Needs CTO (Sat) approval. Said promised to send comparison email (seed list vs standard) so Max can forward to Sat. Annual option: $16k/yr.",
-    nextStep: "Send comparison email seed list vs standard. Max forwards to Sat for CTO sign-off.",
-    avomaMeetingId: "aa548486-2b2f-460b-b777-db27917619c0",
+    id: "M001", meetingId: "aa548486-2b2f-460b-b777-db27917619c0",
+    ae: "saidk@warmy.io", contact: "Max Nyirenda", company: "GoInspire",
+    type: "Upsell", date: "2026-05-13", duration: "23 min",
+    went_well: [
+      "Quickly understood Max's exact use case (EE telecom campaigns, 400–500k sends)",
+      "Proactively identified Amazon SES integration — removed a key friction point",
+      "Offered the seed list upgrade at the right moment with clear ROI framing",
+      "Discovered the partnership angle (GoInspire as performance partner) and offered to send the referral program link",
+      "Set clear next steps with pricing in writing",
+    ],
+    improve: [
+      "Max asked for a comparison email (seed list vs standard) to forward to Sat — should have sent it immediately after the call, not promised it",
+      "Pricing was slightly unclear — had to correct himself mid-call on the $1,900 vs $2,200 calculation",
+      "Could have asked earlier about Sat's decision timeline to set a follow-up date",
+    ],
+    score: 82,
+    summary: "Strong upsell call. Said moved confidently from discovery to proposal. Main gap is not locking in a specific next-step date with Sat, which creates ambiguity in the follow-up sequence.",
   },
   {
-    id: "BILL_001",
-    contactName: "Bill Bowden",
-    contactEmail: "bill@maior.ai",
-    company: "maior.ai (lending)",
-    dealStage: "Demo Done",
-    type: "New Business",
-    daysSinceEmail: 1,
-    hasReply: false,
-    action: "initial_followup",
-    ae: "Gokhan Koluman",
-    value: "~$25–39/mailbox/mo, 5 mailboxes, annual",
-    context:
-      "Gokhan + Sofiia demo May 14. Apollo cold outreach, HTML emails tanked deliverability. Google Workspace, 5 mailboxes, 50 emails/day. Comparing vs MX Tools ($129/mo). Bill said 'sounds extremely fair' and committed to annual. Needs to run by founder/CEO. Expected decision: next day (May 15). Gokhan offered $39/mo per mailbox (~$25 annual).",
-    nextStep: "Follow up — Bill said he'd have answer 'by tomorrow afternoon'. Check in on CEO sign-off.",
-    avomaMeetingId: "c014a5a1-ae9b-4131-a15f-691f274b6dd1",
+    id: "M002", meetingId: "c014a5a1-ae9b-4131-a15f-691f274b6dd1",
+    ae: "gokhank@warmy.io", contact: "Bill Bowden + Craig", company: "maior.ai",
+    type: "Demo", date: "2026-05-14", duration: "33 min",
+    went_well: [
+      "Thorough discovery — got full context on the HTML email issue, Apollo setup, and team structure before pitching",
+      "Sofiia's product demo was clear and addressed the exact deliverability issues they mentioned",
+      "Gokhan framed Warmy as a 'partner' not just a tool — built credibility",
+      "Pushed for a decision timeline ('by tomorrow afternoon') — Bill committed",
+      "Annual framing done naturally — Bill said 'year's commitment makes sense'",
+    ],
+    improve: [
+      "Call ran slightly long — Sofiia's demo could be tighter for a 30-min slot",
+      "Should have confirmed the CEO's name and role earlier to personalize the follow-up",
+      "Pricing hesitation visible — Gokhan said 'let me check' twice; better to have ranges ready",
+    ],
+    score: 85,
+    summary: "Textbook demo execution. Gokhan diagnosed the problem clearly, Sofiia showed the solution, and they closed with a clear next step. Minor issue: pricing confidence could be stronger.",
   },
   {
-    id: "JACK_001",
-    contactName: "Jamie Anderson",
-    contactEmail: "jamie.anderson@kodiakhub.com",
-    company: "KodiakHub",
-    dealStage: "Proposal Sent",
-    type: "New Business",
-    daysSinceEmail: 2,
-    hasReply: false,
-    action: "followup_2",
-    ae: "Gokhan Koluman",
-    value: "$4,500/yr (30 mailboxes)",
-    context:
-      "Jack Butzu (GTM Engineer) + Jamie Anderson (IT) from Stockholm. May 13 demo. 10 SDRs, ~50 emails/day, Microsoft 365, using Growth Machine + HubSpot sequences. Never done warming. Offered 30 mailboxes × $15/mo = $450/mo or $4,500/yr. Jamie wants to take to CFO. Timeline: end of May. Also cc Jack Butzu (jack.butzu@kodiakhub.com).",
-    nextStep: "Check in with Jamie — did CFO approve? End of month timeline.",
-    avomaMeetingId: "5cb81583-90a8-465a-bde1-346e6f24556f",
+    id: "M003", meetingId: "5cb81583-90a8-465a-bde1-346e6f24556f",
+    ae: "gokhank@warmy.io", contact: "Jack Butzu + Jamie Anderson", company: "KodiakHub",
+    type: "Demo", date: "2026-05-13", duration: "40 min",
+    went_well: [
+      "Handled a complex multi-stakeholder call (GTM engineer + IT) very smoothly",
+      "Correctly identified the infrastructure problem (5 domains not warmed) before proposing a solution",
+      "Got Jamie to frame it as a year commitment naturally — she brought it up herself",
+      "$4,500/yr offer was well-received",
+      "Clear differentiator vs Instantly and Mailreach when asked directly",
+    ],
+    improve: [
+      "Call was 40 min — could have moved to pricing faster after diagnosis was clear",
+      "Jack's specific question about separating rep emails vs sequences wasn't fully answered",
+      "No hard close — 'end of month' timeline is vague; should have booked a follow-up call",
+    ],
+    score: 80,
+    summary: "Strong call on a complex multi-persona deal. The CFO approval step is the main risk — no follow-up meeting booked means this can easily go cold. Priority: get a call on the calendar with Jamie.",
   },
   {
-    id: "DORIAN_001",
-    contactName: "Dorian Lesnic",
-    contactEmail: "dorian@cardneto.com",
-    company: "Cardneto (event app startup)",
-    dealStage: "Closed Won ✓",
-    type: "New Business",
-    daysSinceEmail: 0,
-    hasReply: true,
-    action: "none",
-    ae: "Gokhan Koluman",
-    value: "$100/mo (6 mailboxes — 1 FS6 trial)",
-    context:
-      "Closed on the call May 13. Moldovan startup building event networking app. Signed up and completed payment live during demo. 6 mailboxes, $20/mailbox × 5 + 1 FS6 trial free for 3 months. Then $120/mo after. Dorian said it was 'one of the smoothest sales experiences he'd had' and asked Gokhan for sales advice. Already booked onboarding.",
-    nextStep: "No action needed — onboarding scheduled.",
-    avomaMeetingId: "bef34772-56f8-4c24-9554-66fb5de47382",
-  },
-  {
-    id: "CLEM_001",
-    contactName: "Clem O",
-    contactEmail: "truemediaplace@gmail.com",
-    company: "TrueMediaPlace",
-    dealStage: "Onboarding",
-    type: "Expansion",
-    daysSinceEmail: 0,
-    hasReply: true,
-    action: "none",
-    ae: "Said Karaca",
-    value: "Enterprise (1M emails/day)",
-    context:
-      "Already a customer. Onboarding call May 14 with Said + Felipe. 5 active domains using GreenArrow (Amazon SES-based). Plans to send 1M opt-in emails/day. Sweepstakes niche. Alina Shpak is their CSM. Said handed off to Alina for weekly domain health reviews. Also has Kyle as a contact.",
-    nextStep: "Alina's onboarding — no sales follow-up needed.",
-    avomaMeetingId: "e800d40d-6d69-493c-a252-6b6d988be6b5",
+    id: "M004", meetingId: "bef34772-56f8-4c24-9554-66fb5de47382",
+    ae: "gokhank@warmy.io", contact: "Dorian Lesnic", company: "Cardneto",
+    type: "Demo", date: "2026-05-13", duration: "59 min",
+    went_well: [
+      "Closed on the call — Dorian completed payment live",
+      "Handled competitor questions (Instantly, Apollo warm-up) with confidence and without dismissing them",
+      "Used the startup angle well — $20/mailbox deal felt personal and fair",
+      "Dorian praised the call as 'one of the smoothest sales experiences' he'd had",
+      "Gokhan shared his discovery framework unprompted — great trust builder",
+    ],
+    improve: [
+      "Call ran 59 min for what is essentially a small deal ($100/mo) — time allocation issue",
+      "The Instantly question came up 4 times — should have addressed it more definitively earlier",
+      "VPN/domain setup questions were outside Gokhan's expertise — created some uncertainty",
+    ],
+    score: 90,
+    summary: "Exceptional close. Dorian is a small deal but Gokhan turned him into an advocate on the call. The time investment (59 min) is the only real concern for a $100/mo account.",
   },
 ];
 
-/* ─────────────────────────────────────────────
-   MCP / API CONFIG
-   ───────────────────────────────────────────── */
-const MCP_SERVERS = [
-  { type: "url", url: "https://mcp.hubspot.com/anthropic",       name: "hubspot"  },
-  { type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1",  name: "gmail"    },
+/* ═══════════════════════════════════════════════════════
+   API
+═══════════════════════════════════════════════════════ */
+const MCP = [
+  { type: "url", url: "https://mcp.hubspot.com/anthropic",      name: "hubspot" },
+  { type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1", name: "gmail"   },
 ];
 
-async function callClaude(system, prompt, extra = {}) {
-  const body = {
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 1000,
-    system,
-    messages: [{ role: "user", content: prompt }],
-    mcp_servers: MCP_SERVERS,
-    ...extra,
-  };
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+async function callClaude(system, userMsg) {
+  const r = await fetch("/api/claude", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1000,
+      system, messages: [{ role: "user", content: userMsg }],
+      mcp_servers: MCP,
+    }),
   });
   if (!r.ok) throw new Error(`API ${r.status}`);
   const d = await r.json();
@@ -145,233 +261,326 @@ async function callClaude(system, prompt, extra = {}) {
   return (d.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
 }
 
-/* ─────────────────────────────────────────────
-   FOLLOW-UP EMAIL TEMPLATES (Said's real style)
-   ───────────────────────────────────────────── */
-function buildEmailPrompt(deal, type) {
-  const instrMap = {
-    initial_followup: `Post-meeting follow-up. Recap the 2-3 exact things discussed on the call (use the context provided). Confirm next steps. Warm, direct, no fluff. Under 80 words.`,
-    followup_2: `3-day check-in. Reference the previous email briefly. Very low pressure. Ask one direct question to keep things moving. Under 60 words.`,
-    followup_3: `6-day final check-in. Honest and direct. Say you're checking in one last time before moving on. Make it easy to say yes or no. Under 50 words.`,
-  };
-
+function buildDraftPrompt(task, fuConfig, aeProfile) {
   return `
-You are Said Karaca, Head of Sales at Warmy.io. Write a ${type.replace("_", " ")} email for this deal.
+You are ${aeProfile.name}'s personal writing assistant. Write a follow-up email in their EXACT voice.
 
-YOUR STYLE:
-- Greeting: "${SAID_STYLE.greeting}"
-- Closing: "${SAID_STYLE.closing}"
-- Tone: ${SAID_STYLE.tone}
-- Length: ~${SAID_STYLE.avgWords} words
-- Never sounds templated. Specific to their exact situation.
-- Mentions Warmy features relevant to THEIR use case only.
+AE STYLE:
+- Name: ${aeProfile.name}
+- Greeting: "${aeProfile.greeting}"
+- Closing: "${aeProfile.closing}"
+- Tone: ${aeProfile.tone}
+- Target length: ~${aeProfile.avgWords} words
+- Signature phrases: ${aeProfile.phrases.join(", ")}
 
 DEAL CONTEXT:
-- Contact: ${deal.contactName} at ${deal.company}
-- Email: ${deal.contactEmail}
-- Deal type: ${deal.type}
-- Stage: ${deal.dealStage}
-- What was discussed: ${deal.context}
-- Next step needed: ${deal.nextStep}
-- AE who ran the call: ${deal.ae}
+- Contact: ${task.contactName} at ${task.company}
+- Meeting date: ${task.meetingDate} (${task.daysSinceMeeting} days ago)
+- What was discussed: ${task.meetingContext}
+- Follow-up type: ${fuConfig.label}
 
-INSTRUCTIONS: ${instrMap[type] || instrMap.initial_followup}
+EMAIL INSTRUCTIONS:
+${fuConfig.instruction}
 
-CRITICAL: Do NOT be generic. Reference the specific things from the call context above.
-Output ONLY the email — subject line first (prefix with "Subject: "), then body. Nothing else.
+CRITICAL:
+- Reference SPECIFIC details from the meeting context — numbers, names, features discussed
+- Do NOT sound like a template
+- Do NOT mention "I hope this email finds you well" or similar generic openers
+- Output ONLY: Subject line (prefix "Subject: "), blank line, then email body. Nothing else.
 `.trim();
 }
 
-/* ─────────────────────────────────────────────
-   AUTOPILOT ENGINE
-   ───────────────────────────────────────────── */
-async function runAutopilotEngine({ deals, onLog, onStat, onDealUpdate }) {
-  const actionable = deals.filter(d => d.action !== "none");
-  const toEmail    = actionable.filter(d => d.action !== "close_lost");
-  const toClose    = actionable.filter(d => d.action === "close_lost");
-
-  onLog("Autopilot starting — " + actionable.length + " deals require action", "info");
-
-  // ── SEND EMAILS ──────────────────────────────
-  for (const deal of toEmail) {
-    const label = { initial_followup: "post-meeting", followup_2: "3-day follow-up", followup_3: "6-day final" }[deal.action];
-    onLog(`Drafting ${label} → ${deal.contactName}…`, "info");
-    try {
-      const emailDraft = await callClaude(
-        "You are Said Karaca's sales automation assistant. Generate and send follow-up emails in his exact style.",
-        buildEmailPrompt(deal, deal.action) + `\n\nAfter generating the email:\n1. Use Gmail MCP to SEND it to ${deal.contactEmail}\n2. Use HubSpot MCP to log this email as an activity on the deal named "${deal.company}" or contact "${deal.contactName}", and update last contact date to today.`
-      );
-      onLog(`✓ Sent to ${deal.contactName} (${deal.company})`, "success");
-      onStat("sent");
-      onStat("updated");
-      onDealUpdate(deal.id, "email_sent", emailDraft);
-    } catch (e) {
-      onLog(`✗ Failed for ${deal.contactName}: ${e.message}`, "error");
-    }
-  }
-
-  // ── CLOSE LOST ───────────────────────────────
-  for (const deal of toClose) {
-    onLog(`Closing "${deal.company}" — ${deal.daysSinceEmail}d, no reply`, "warning");
-    try {
-      await callClaude(
-        "You are Said's sales automation assistant. Clean HubSpot pipeline.",
-        `Use HubSpot MCP to:
-1. Find the deal for contact "${deal.contactName}" at "${deal.company}"
-2. Move it to "Closed Lost"
-3. Add note: "Auto-closed — 3 follow-up sequences over 9 days with no response from ${deal.contactEmail}. Closed ${new Date().toLocaleDateString("en-GB")} by Autopilot."
-4. Set loss reason: "No response"`
-      );
-      onLog(`Closed: "${deal.company}"`, "info");
-      onStat("closedLost");
-      onDealUpdate(deal.id, "closed_lost");
-    } catch (e) {
-      onLog(`✗ Failed closing ${deal.company}: ${e.message}`, "error");
-    }
-  }
-
-  onLog("Autopilot complete.", "success");
-}
-
-/* ─────────────────────────────────────────────
-   ACTION META
-   ───────────────────────────────────────────── */
-const ACTION = {
-  initial_followup: { label: "Post-meeting",   color: "#3b82f6", bg: "rgba(59,130,246,0.12)" },
-  followup_2:       { label: "Follow-up #2",   color: "#f59e0b", bg: "rgba(245,158,11,0.12)" },
-  followup_3:       { label: "Follow-up #3 ⚠", color: "#ef4444", bg: "rgba(239,68,68,0.12)"  },
-  close_lost:       { label: "Close Lost",      color: "#6b7280", bg: "rgba(107,114,128,0.12)"},
-  none:             { label: "Up to date",      color: "#10b981", bg: "rgba(16,185,129,0.12)" },
-};
-
-const LOG_COLOR = { success: "#10b981", error: "#ef4444", warning: "#f59e0b", info: "#94a3b8" };
-
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
    COMPONENTS
-   ───────────────────────────────────────────── */
-function Avatar({ initials, size = 32, color = "#f59e0b" }) {
-  return (
-    <div style={{
-      width: size, height: size, borderRadius: "50%",
-      background: `${color}22`, border: `1.5px solid ${color}44`,
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontSize: size * 0.35, fontWeight: 600, color, flexShrink: 0,
-      fontFamily: "'DM Mono', monospace",
-    }}>{initials}</div>
-  );
-}
-
-function Badge({ label, color, bg }) {
+═══════════════════════════════════════════════════════ */
+function Badge({ label, color, size = "sm" }) {
+  const pad = size === "sm" ? "2px 7px" : "4px 11px";
+  const fs = size === "sm" ? 10 : 12;
   return (
     <span style={{
-      fontSize: 11, padding: "3px 9px", borderRadius: 4,
-      background: bg, color, border: `1px solid ${color}33`,
-      fontWeight: 600, letterSpacing: "0.02em", whiteSpace: "nowrap",
-      fontFamily: "'DM Mono', monospace",
+      display: "inline-block", padding: pad, borderRadius: 4,
+      background: `${color}18`, border: `1px solid ${color}40`,
+      color, fontSize: fs, fontWeight: 700, letterSpacing: "0.05em",
+      fontFamily: "'JetBrains Mono', monospace", whiteSpace: "nowrap",
     }}>{label}</span>
   );
 }
 
-function StatCard({ label, value, accent = "#f59e0b" }) {
+function AEAvatar({ email, size = 30 }) {
+  const p = AE_PROFILES[email] || { initials: "?", color: "#64748b" };
+  return (
+    <div title={p.name} style={{
+      width: size, height: size, borderRadius: "50%",
+      background: `${p.color}20`, border: `1.5px solid ${p.color}50`,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.34, fontWeight: 700, color: p.color, flexShrink: 0,
+      fontFamily: "'JetBrains Mono', monospace",
+    }}>{p.initials}</div>
+  );
+}
+
+function TaskCard({ task, onDraftGenerated, onSend, onPipelineAction, onDismiss }) {
+  const [generating, setGenerating] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [pipelining, setPipelining] = useState(false);
+  const [draft, setDraft] = useState(task.draft || "");
+  const [expanded, setExpanded] = useState(task.status === "pending" && !task.draft);
+  const [pipelineChoice, setPipelineChoice] = useState(null); // "close_lost" | "negotiation"
+
+  const fuConfig = FU_CONFIG[task.type];
+  const aeProfile = AE_PROFILES[task.ae];
+  const isLastFU = task.type === "fu4";
+  const urgency = task.daysSinceMeeting >= 9 ? "high" : task.daysSinceMeeting >= 6 ? "mid" : "low";
+  const urgencyColor = { high: "#ef4444", mid: "#f97316", low: fuConfig.color }[urgency];
+
+  const handleGenerateDraft = async () => {
+    setGenerating(true);
+    try {
+      const text = await callClaude(
+        `You are a sales email writer for ${aeProfile.name} at Warmy.io. Write emails that sound exactly like them — not like AI.`,
+        buildDraftPrompt(task, fuConfig, aeProfile)
+      );
+      setDraft(text);
+      onDraftGenerated(task.id, text);
+      setExpanded(true);
+    } catch (e) {
+      setDraft(`Error generating draft: ${e.message}`);
+    }
+    setGenerating(false);
+  };
+
+  const handleSend = async () => {
+    if (!draft) return;
+    setSending(true);
+    try {
+      const lines = draft.split("\n");
+      const subjectLine = lines.find(l => l.startsWith("Subject:"))?.replace("Subject:", "").trim() || `Follow-up — Warmy.io`;
+      const body = lines.filter(l => !l.startsWith("Subject:")).join("\n").trim();
+      await callClaude(
+        "You are a Gmail automation assistant. Send the email exactly as provided.",
+        `Use Gmail MCP to send this email:
+To: ${task.contactEmail}
+Subject: ${subjectLine}
+Body:
+${body}
+
+After sending, use HubSpot MCP to:
+1. Find the deal/contact for "${task.contactName}" at "${task.company}"
+2. Log this email as an activity with today's date
+3. Add note: "${fuConfig.label} sent — ${new Date().toLocaleDateString("en-GB")}"`
+      );
+      onSend(task.id);
+    } catch (e) {
+      alert("Send failed: " + e.message);
+    }
+    setSending(false);
+  };
+
+  const handlePipeline = async (action) => {
+    setPipelining(true);
+    const stage = action === "negotiation" ? "Negotiation" : "Closed Lost";
+    try {
+      await callClaude(
+        "You are a HubSpot automation assistant.",
+        `Use HubSpot MCP to:
+1. Find deal/contact for "${task.contactName}" at "${task.company}"
+2. Move deal stage to "${stage}"
+3. Add note: "Stage updated to ${stage} by AE Assistant — ${new Date().toLocaleDateString("en-GB")}"
+${stage === "Closed Lost" ? '4. Set loss reason: "No response after 4 follow-up attempts over 9 days"' : ""}`
+      );
+      onPipelineAction(task.id, stage);
+    } catch (e) {
+      alert("Pipeline update failed: " + e.message);
+    }
+    setPipelining(false);
+  };
+
+  const handleInitialPipeline = async () => {
+    setPipelining(true);
+    try {
+      await callClaude(
+        "You are a HubSpot automation assistant.",
+        `Use HubSpot MCP to:
+1. Find deal/contact for "${task.contactName}" at "${task.company}"
+2. Move deal stage to "Price Proposal Sent"
+3. Add note: "Stage moved to Price Proposal Sent after meeting on ${task.meetingDate} — AE Assistant"`
+      );
+      onPipelineAction(task.id, "Price Proposal Sent");
+    } catch (e) {
+      alert("Pipeline update failed: " + e.message);
+    }
+    setPipelining(false);
+  };
+
+  if (task.status === "sent") {
+    return (
+      <div style={{ padding: "12px 16px", background: "rgba(16,185,129,0.04)", border: "1px solid rgba(16,185,129,0.15)", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+        <span style={{ fontSize: 16 }}>✓</span>
+        <div style={{ flex: 1 }}>
+          <span style={{ fontSize: 13, color: "#10b981", fontWeight: 600 }}>{task.contactName}</span>
+          <span style={{ fontSize: 12, color: "#475569", marginLeft: 8 }}>{fuConfig.label} sent</span>
+        </div>
+        <Badge label="DONE" color="#10b981" />
+      </div>
+    );
+  }
+
   return (
     <div style={{
-      background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 10, padding: "14px 16px", position: "relative", overflow: "hidden",
+      background: "rgba(255,255,255,0.025)", border: `1px solid rgba(255,255,255,0.07)`,
+      borderRadius: 14, overflow: "hidden",
+      borderLeft: `3px solid ${urgencyColor}`,
+      animation: "slideUp 0.3s ease",
     }}>
-      <div style={{
-        position: "absolute", top: 0, left: 0, right: 0, height: 2,
-        background: `linear-gradient(90deg, ${accent}, transparent)`,
-      }} />
-      <p style={{ margin: 0, fontSize: 11, color: "#64748b", letterSpacing: "0.08em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>{label}</p>
-      <p style={{ margin: "6px 0 0", fontSize: 28, fontWeight: 700, color: "#f8fafc", fontFamily: "'Sora', sans-serif" }}>{value}</p>
-    </div>
-  );
-}
-
-function StepBar({ steps, currentStep, isDone }) {
-  return (
-    <div style={{ display: "flex", gap: 4, marginBottom: 24 }}>
-      {steps.map((s, i) => {
-        const done   = isDone || i < currentStep;
-        const active = !isDone && i === currentStep;
-        return (
-          <div key={i} style={{ flex: 1, position: "relative" }}>
-            <div style={{
-              padding: "6px 8px", borderRadius: 6, fontSize: 11,
-              whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-              background: done ? "rgba(16,185,129,0.12)" : active ? "rgba(245,158,11,0.12)" : "rgba(255,255,255,0.03)",
-              border: `1px solid ${done ? "rgba(16,185,129,0.3)" : active ? "rgba(245,158,11,0.4)" : "rgba(255,255,255,0.07)"}`,
-              color: done ? "#10b981" : active ? "#f59e0b" : "#475569",
-              fontFamily: "'DM Mono', monospace",
-              animation: active ? "pulse-border 1.5s ease-in-out infinite" : "none",
-            }}>
-              {done ? "✓ " : active ? "⟳ " : ""}{s}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function DealRow({ deal, onEdit }) {
-  const meta = ACTION[deal.action] || ACTION.none;
-  const [expanded, setExpanded] = useState(false);
-
-  return (
-    <div style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+      {/* Card header */}
       <div
         onClick={() => setExpanded(e => !e)}
-        style={{
-          display: "flex", alignItems: "center", padding: "12px 16px", gap: 12,
-          cursor: "pointer", transition: "background 0.15s",
-        }}
-        onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.03)"}
-        onMouseLeave={e => e.currentTarget.style.background = "transparent"}
+        style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
       >
-        <Avatar initials={deal.contactName.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()} size={34} color={meta.color} />
+        <AEAvatar email={task.ae} size={36} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9", fontFamily: "'Sora', sans-serif" }}>
-              {deal.contactName}
-            </p>
-            <span style={{ fontSize: 12, color: "#475569", fontFamily: "'DM Mono', monospace" }}>· {deal.company}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{task.contactName}</span>
+            <span style={{ fontSize: 12, color: "#475569" }}>·</span>
+            <span style={{ fontSize: 12, color: "#64748b" }}>{task.company}</span>
+            <Badge label={fuConfig.badge} color={fuConfig.color} />
+            {task.daysSinceMeeting >= 6 && <Badge label={`${task.daysSinceMeeting}d`} color={urgencyColor} />}
           </div>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569", fontFamily: "'DM Mono', monospace" }}>
-            {deal.ae} · {deal.value} · {deal.daysSinceEmail}d ago
-          </p>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
+              {aeProfile?.name} · {task.dealValue} · {task.dealStage}
+            </span>
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Badge label={meta.label} color={meta.color} bg={meta.bg} />
-          <span style={{ color: "#475569", fontSize: 12, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
+          {task.pipelineStatus === "pending" && (
+            <Badge label="PIPELINE !" color="#f59e0b" />
+          )}
+          <span style={{ color: "#334155", fontSize: 14, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
         </div>
       </div>
 
+      {/* Expanded content */}
       {expanded && (
-        <div style={{
-          padding: "0 16px 14px 62px",
-          animation: "fade-in 0.2s ease",
-        }}>
-          <p style={{ margin: "0 0 8px", fontSize: 12, color: "#64748b", lineHeight: 1.6, fontFamily: "'Sora', sans-serif" }}>
-            {deal.context}
-          </p>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: "#f59e0b", fontFamily: "'DM Mono', monospace" }}>→ {deal.nextStep}</span>
+        <div style={{ padding: "0 16px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+
+          {/* Meeting context */}
+          <div style={{ marginTop: 12, padding: "10px 12px", background: "rgba(0,0,0,0.2)", borderRadius: 8, marginBottom: 14 }}>
+            <p style={{ margin: "0 0 4px", fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>Meeting Context</p>
+            <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.65 }}>{task.meetingContext}</p>
           </div>
-          <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            {Object.entries(ACTION).filter(([k]) => k !== "none").map(([k, v]) => (
+
+          {/* Draft area */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <p style={{ margin: 0, fontSize: 11, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>
+                {fuConfig.label} Draft
+              </p>
               <button
-                key={k}
-                onClick={e => { e.stopPropagation(); onEdit(deal.id, k); }}
+                onClick={handleGenerateDraft}
+                disabled={generating}
                 style={{
-                  fontSize: 11, padding: "3px 10px", borderRadius: 4, cursor: "pointer",
-                  background: deal.action === k ? v.bg : "transparent",
-                  border: `1px solid ${deal.action === k ? v.color + "55" : "rgba(255,255,255,0.08)"}`,
-                  color: deal.action === k ? v.color : "#475569",
-                  fontFamily: "'DM Mono', monospace", transition: "all 0.15s",
+                  fontSize: 11, padding: "4px 12px", borderRadius: 6, cursor: generating ? "not-allowed" : "pointer",
+                  background: generating ? "rgba(255,255,255,0.05)" : "rgba(245,158,11,0.12)",
+                  border: `1px solid ${generating ? "rgba(255,255,255,0.08)" : "rgba(245,158,11,0.3)"}`,
+                  color: generating ? "#475569" : "#f59e0b", fontFamily: "'JetBrains Mono', monospace",
+                  display: "flex", alignItems: "center", gap: 6,
                 }}
-              >{v.label}</button>
-            ))}
+              >
+                {generating ? (
+                  <><span style={{ display: "inline-block", animation: "spin 0.8s linear infinite" }}>⟳</span> Writing…</>
+                ) : (
+                  draft ? "↻ Regenerate" : "✦ Generate Draft"
+                )}
+              </button>
+            </div>
+            <textarea
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              placeholder={`Click "Generate Draft" to write ${fuConfig.label} in ${aeProfile?.name}'s style…`}
+              style={{
+                width: "100%", minHeight: 160, padding: "12px",
+                background: "rgba(0,0,0,0.25)", border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 8, color: "#cbd5e1", fontSize: 13, lineHeight: 1.7,
+                fontFamily: "'JetBrains Mono', monospace", resize: "vertical",
+                outline: "none", boxSizing: "border-box",
+              }}
+            />
+          </div>
+
+          {/* Actions row */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {/* Send button */}
+            <button
+              onClick={handleSend}
+              disabled={!draft || sending}
+              style={{
+                flex: 1, minWidth: 140, padding: "10px 16px", borderRadius: 8,
+                background: draft && !sending ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "rgba(255,255,255,0.04)",
+                border: `1px solid ${draft && !sending ? "transparent" : "rgba(255,255,255,0.08)"}`,
+                color: draft && !sending ? "#fff" : "#334155",
+                fontSize: 13, fontWeight: 600, cursor: draft && !sending ? "pointer" : "not-allowed",
+                fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              }}
+            >
+              {sending ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⟳</span> Sending…</> : "✉ Send via Gmail"}
+            </button>
+
+            {/* Pipeline: initial (FU1 only) */}
+            {task.type === "fu1" && task.pipelineStatus === "pending" && (
+              <button
+                onClick={handleInitialPipeline}
+                disabled={pipelining}
+                style={{
+                  flex: 1, minWidth: 140, padding: "10px 16px", borderRadius: 8,
+                  background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
+                  color: "#f59e0b", fontSize: 13, fontWeight: 600,
+                  cursor: pipelining ? "not-allowed" : "pointer",
+                  fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                }}
+              >
+                {pipelining ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⟳</span> Updating…</> : "→ Move to Proposal Sent"}
+              </button>
+            )}
+
+            {/* Pipeline: FU4 close or negotiate */}
+            {task.type === "fu4" && (
+              <>
+                <button
+                  onClick={() => handlePipeline("negotiation")}
+                  disabled={pipelining}
+                  style={{
+                    padding: "10px 14px", borderRadius: 8,
+                    background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)",
+                    color: "#10b981", fontSize: 12, fontWeight: 600,
+                    cursor: pipelining ? "not-allowed" : "pointer",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >→ Negotiation</button>
+                <button
+                  onClick={() => handlePipeline("close_lost")}
+                  disabled={pipelining}
+                  style={{
+                    padding: "10px 14px", borderRadius: 8,
+                    background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+                    color: "#ef4444", fontSize: 12, fontWeight: 600,
+                    cursor: pipelining ? "not-allowed" : "pointer",
+                    fontFamily: "'JetBrains Mono', monospace",
+                  }}
+                >✕ Close Lost</button>
+              </>
+            )}
+
+            {/* Dismiss */}
+            <button
+              onClick={() => onDismiss(task.id)}
+              style={{
+                padding: "10px 12px", borderRadius: 8,
+                background: "transparent", border: "1px solid rgba(255,255,255,0.06)",
+                color: "#334155", fontSize: 12, cursor: "pointer",
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >Dismiss</button>
           </div>
         </div>
       )}
@@ -379,437 +588,437 @@ function DealRow({ deal, onEdit }) {
   );
 }
 
-/* ─────────────────────────────────────────────
+function MeetingAnalysisCard({ analysis }) {
+  const [expanded, setExpanded] = useState(false);
+  const aeProfile = AE_PROFILES[analysis.ae];
+  const scoreColor = analysis.score >= 85 ? "#10b981" : analysis.score >= 75 ? "#f59e0b" : "#ef4444";
+
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
+      borderRadius: 14, overflow: "hidden", marginBottom: 10,
+    }}>
+      <div onClick={() => setExpanded(e => !e)} style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+        <AEAvatar email={analysis.ae} size={36} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{analysis.contact}</span>
+            <span style={{ fontSize: 12, color: "#64748b" }}>· {analysis.company}</span>
+            <Badge label={analysis.type} color={aeProfile?.color || "#64748b"} />
+          </div>
+          <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
+            {analysis.date} · {analysis.duration} · {aeProfile?.name}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: scoreColor, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{analysis.score}</div>
+            <div style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>score</div>
+          </div>
+          <span style={{ color: "#334155", fontSize: 14, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: "0 16px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          <p style={{ margin: "12px 0 14px", fontSize: 13, color: "#94a3b8", lineHeight: 1.7, borderLeft: "2px solid rgba(255,255,255,0.1)", paddingLeft: 12 }}>
+            {analysis.summary}
+          </p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#10b981", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", gap: 5 }}>
+                <span>✓</span> What went well
+              </p>
+              {analysis.went_well.map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
+                  <span style={{ color: "#10b981", fontSize: 11, flexShrink: 0, marginTop: 2 }}>·</span>
+                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", gap: 5 }}>
+                <span>△</span> Could improve
+              </p>
+              {analysis.improve.map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
+                  <span style={{ color: "#f59e0b", fontSize: 11, flexShrink: 0, marginTop: 2 }}>·</span>
+                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
    MAIN APP
-   ───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 export default function App() {
-  const [tab, setTab]           = useState("autopilot");
-  const [deals, setDeals]       = useState(SEEDED_DEALS);
-  const [status, setStatus]     = useState("idle"); // idle | running | done | error
-  const [currentStep, setStep]  = useState(-1);
-  const [log, setLog]           = useState([]);
-  const [stats, setStats]       = useState({ sent: 0, updated: 0, closedLost: 0 });
-  const [emailDrafts, setDrafts]= useState({});
-  const logRef = useRef(null);
+  const [tasks, setTasks]       = useState(INITIAL_TASKS);
+  const [tab, setTab]           = useState("tasks");
+  const [aeFilter, setAeFilter] = useState("all");
+  const [syncing, setSyncing]   = useState(false);
+  const [lastSync, setLastSync] = useState(null);
 
-  const addLog = useCallback((msg, type = "info") => {
-    const ts = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    setLog(prev => [...prev, { msg, type, ts }]);
-  }, []);
+  const pendingTasks = tasks.filter(t =>
+    t.status === "pending" &&
+    (aeFilter === "all" || t.ae === aeFilter)
+  ).sort((a, b) => b.daysSinceMeeting - a.daysSinceMeeting);
 
-  const bumpStat = useCallback((key) => setStats(s => ({ ...s, [key]: s[key] + 1 })), []);
+  const sentTasks = tasks.filter(t => t.status === "sent" && (aeFilter === "all" || t.ae === aeFilter));
 
-  const updateDeal = useCallback((id, status, draft) => {
-    if (draft) setDrafts(prev => ({ ...prev, [id]: draft }));
-    if (status === "closed_lost")
-      setDeals(prev => prev.map(d => d.id === id ? { ...d, action: "none", dealStage: "Closed Lost" } : d));
-    else if (status === "email_sent")
-      setDeals(prev => prev.map(d => d.id === id ? { ...d, daysSinceEmail: 0 } : d));
-  }, []);
-
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [log]);
-
-  const editDealAction = (id, newAction) => {
-    setDeals(prev => prev.map(d => d.id === id ? { ...d, action: newAction } : d));
+  const handleDraftGenerated = (id, draft) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, draft } : t));
   };
 
-  const handleRun = async () => {
-    setStatus("running");
-    setStep(0);
-    setLog([]);
-    setStats({ sent: 0, updated: 0, closedLost: 0 });
-
-    try {
-      await runAutopilotEngine({
-        deals,
-        onLog: addLog,
-        onStat: bumpStat,
-        onDealUpdate: updateDeal,
-      });
-      setStatus("done");
-      setStep(5);
-    } catch (e) {
-      addLog("Fatal error: " + e.message, "error");
-      setStatus("error");
-    }
+  const handleSend = (id) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "sent", pipelineStatus: "done" } : t));
   };
 
-  const isRunning = status === "running";
-  const isDone    = status === "done";
-  const isError   = status === "error";
-  const actionable = deals.filter(d => d.action !== "none");
-  const totalPipeline = deals.filter(d => !["none", "close_lost"].includes(d.action) || d.dealStage !== "Closed Lost");
+  const handlePipelineAction = (id, stage) => {
+    setTasks(prev => prev.map(t => t.id === id
+      ? { ...t, pipelineStatus: "done", dealStage: stage, status: stage === "Closed Lost" ? "sent" : t.status }
+      : t));
+  };
 
-  const STEPS = ["Read pipeline", "Draft emails", "Send via Gmail", "Log to HubSpot", "Clean pipeline"];
+  const handleDismiss = (id) => {
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "sent" } : t));
+  };
 
-  const TABS = [
-    { id: "autopilot", label: "Autopilot" },
-    { id: "pipeline",  label: "Pipeline Intel" },
-    { id: "team",      label: "Team" },
-    { id: "style",     label: "Said's Style" },
+  const handleSync = async () => {
+    setSyncing(true);
+    await new Promise(r => setTimeout(r, 2000));
+    setLastSync(new Date());
+    setSyncing(false);
+  };
+
+  const urgentCount = pendingTasks.filter(t => t.daysSinceMeeting >= 6).length;
+  const pipelinePending = tasks.filter(t => t.pipelineStatus === "pending").length;
+
+  const AE_LIST = Object.entries(AE_PROFILES).map(([email, p]) => ({ email, ...p }));
+
+  const TAB_CONFIG = [
+    { id: "tasks",    label: "Action Queue",      count: pendingTasks.length },
+    { id: "pipeline", label: "Pipeline Control",  count: pipelinePending > 0 ? pipelinePending : null },
+    { id: "analysis", label: "Meeting Analysis",  count: null },
   ];
 
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#0a0d14",
+      background: "#080b12",
       color: "#f1f5f9",
-      fontFamily: "'Sora', sans-serif",
-      backgroundImage: "radial-gradient(ellipse 80% 60% at 50% -10%, rgba(245,158,11,0.06) 0%, transparent 70%)",
+      fontFamily: "'Outfit', system-ui, sans-serif",
+      backgroundImage: "radial-gradient(ellipse 60% 40% at 20% 0%, rgba(59,130,246,0.05) 0%, transparent 60%), radial-gradient(ellipse 40% 30% at 80% 100%, rgba(245,158,11,0.04) 0%, transparent 60%)",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap');
-        * { box-sizing: border-box; }
-        @keyframes pulse-border { 0%,100%{opacity:1} 50%{opacity:0.6} }
-        @keyframes fade-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-        @keyframes spin { to{transform:rotate(360deg)} }
-        @keyframes slide-up { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-        .tab-btn { background:none;border:none;cursor:pointer;padding:8px 16px;font-size:13px;font-weight:500;border-radius:8px;transition:all 0.15s;font-family:'Sora',sans-serif; }
-        .tab-btn:hover { background:rgba(255,255,255,0.05); }
-        .run-btn { width:100%;padding:16px;font-size:15px;font-weight:600;cursor:pointer;border-radius:12px;border:none;transition:all 0.2s;font-family:'Sora',sans-serif;letter-spacing:0.01em; }
-        .run-btn:hover { transform:translateY(-1px);box-shadow:0 8px 32px rgba(245,158,11,0.25); }
-        .run-btn:active { transform:translateY(0); }
-        .run-btn:disabled { opacity:0.5;cursor:not-allowed;transform:none; }
-        ::-webkit-scrollbar { width:4px; }
-        ::-webkit-scrollbar-track { background:transparent; }
-        ::-webkit-scrollbar-thumb { background:#1e293b;border-radius:4px; }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        textarea:focus { border-color: rgba(59,130,246,0.4) !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.08); }
+        textarea::placeholder { color: #1e293b; }
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        button { transition: all 0.15s; }
+        button:hover:not(:disabled) { opacity: 0.88; }
       `}</style>
 
-      {/* ── HEADER ── */}
+      {/* ── TOPBAR ── */}
       <div style={{
-        borderBottom: "1px solid rgba(255,255,255,0.06)",
-        padding: "0 24px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        height: 56, background: "rgba(10,13,20,0.95)", backdropFilter: "blur(12px)",
         position: "sticky", top: 0, zIndex: 100,
+        background: "rgba(8,11,18,0.92)", backdropFilter: "blur(16px)",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        padding: "0 24px", height: 58,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          {/* Logo */}
           <div style={{
-            width: 28, height: 28, borderRadius: 7,
-            background: "linear-gradient(135deg, #f59e0b, #d97706)",
+            width: 30, height: 30, borderRadius: 8,
+            background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 14, fontWeight: 700, color: "#0a0d14",
+            fontSize: 13, fontWeight: 800, color: "#0a0d14",
           }}>W</div>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#f8fafc" }}>Warmy Autopilot</span>
-          <span style={{ fontSize: 11, color: "#475569", fontFamily: "'DM Mono', monospace", marginLeft: 4 }}>Said Karaca · Head of Sales</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {isDone && <Badge label="Run complete" color="#10b981" bg="rgba(16,185,129,0.12)" />}
-          {isError && <Badge label="Error" color="#ef4444" bg="rgba(239,68,68,0.12)" />}
-          {isRunning && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f59e0b", animation: "pulse-border 1s infinite" }} />
-              <span style={{ fontSize: 12, color: "#f59e0b", fontFamily: "'DM Mono', monospace" }}>RUNNING</span>
+          <div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#f8fafc", lineHeight: 1 }}>AE Assistant</div>
+            <div style={{ fontSize: 10, color: "#334155", fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>Warmy.io · Sales Ops</div>
+          </div>
+
+          {/* Divider */}
+          <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.06)", margin: "0 6px" }} />
+
+          {/* Urgent indicator */}
+          {urgentCount > 0 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 20, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#ef4444", animation: "pulse 1.2s ease infinite" }} />
+              <span style={{ fontSize: 11, color: "#ef4444", fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>{urgentCount} URGENT</span>
             </div>
           )}
         </div>
-      </div>
 
-      {/* ── TABS ── */}
-      <div style={{ padding: "12px 24px 0", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", gap: 4 }}>
-        {TABS.map(t => (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          {lastSync && <span style={{ fontSize: 11, color: "#334155", fontFamily: "'JetBrains Mono', monospace" }}>synced {lastSync.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}</span>}
           <button
-            key={t.id}
-            className="tab-btn"
-            onClick={() => setTab(t.id)}
+            onClick={handleSync}
+            disabled={syncing}
             style={{
-              color: tab === t.id ? "#f59e0b" : "#64748b",
-              background: tab === t.id ? "rgba(245,158,11,0.08)" : "transparent",
-              borderBottom: tab === t.id ? "2px solid #f59e0b" : "2px solid transparent",
-              borderRadius: "8px 8px 0 0",
+              padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+              background: syncing ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.09)", color: syncing ? "#334155" : "#94a3b8",
+              cursor: syncing ? "not-allowed" : "pointer", fontFamily: "'JetBrains Mono', monospace",
+              display: "flex", alignItems: "center", gap: 6,
             }}
-          >{t.label}</button>
-        ))}
+          >
+            <span style={{ display: "inline-block", animation: syncing ? "spin 0.8s linear infinite" : "none" }}>⟳</span>
+            {syncing ? "Syncing…" : "Sync Avoma"}
+          </button>
+        </div>
       </div>
 
-      {/* ── CONTENT ── */}
-      <div style={{ padding: 24, maxWidth: 780, margin: "0 auto" }}>
+      {/* ── TABS + AE FILTER ── */}
+      <div style={{
+        padding: "0 24px", borderBottom: "1px solid rgba(255,255,255,0.05)",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        background: "rgba(8,11,18,0.7)",
+      }}>
+        <div style={{ display: "flex", gap: 0 }}>
+          {TAB_CONFIG.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                padding: "14px 18px", fontSize: 13, fontWeight: 600,
+                background: "transparent", border: "none",
+                borderBottom: tab === t.id ? "2px solid #3b82f6" : "2px solid transparent",
+                color: tab === t.id ? "#f1f5f9" : "#475569",
+                cursor: "pointer", display: "flex", alignItems: "center", gap: 7,
+              }}
+            >
+              {t.label}
+              {t.count !== null && t.count > 0 && (
+                <span style={{
+                  fontSize: 10, padding: "1px 6px", borderRadius: 10,
+                  background: tab === t.id ? "#3b82f6" : "rgba(255,255,255,0.08)",
+                  color: tab === t.id ? "#fff" : "#64748b",
+                  fontFamily: "'JetBrains Mono', monospace", fontWeight: 700,
+                }}>{t.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
 
-        {/* ════ AUTOPILOT TAB ════ */}
-        {tab === "autopilot" && (
-          <div style={{ animation: "slide-up 0.3s ease" }}>
-            {/* Stats */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 24 }}>
-              <StatCard label="Actionable deals" value={actionable.length} accent="#f59e0b" />
-              <StatCard label="Emails sent"      value={stats.sent}        accent="#3b82f6" />
-              <StatCard label="CRM updated"      value={stats.updated}     accent="#8b5cf6" />
-              <StatCard label="Closed lost"      value={stats.closedLost}  accent="#ef4444" />
+        {/* AE filter */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: "#334155", fontFamily: "'JetBrains Mono', monospace" }}>VIEW AS</span>
+          <div style={{ display: "flex", gap: 4 }}>
+            <button
+              onClick={() => setAeFilter("all")}
+              style={{
+                padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                background: aeFilter === "all" ? "rgba(255,255,255,0.08)" : "transparent",
+                border: `1px solid ${aeFilter === "all" ? "rgba(255,255,255,0.12)" : "transparent"}`,
+                color: aeFilter === "all" ? "#f1f5f9" : "#475569", cursor: "pointer",
+                fontFamily: "'JetBrains Mono', monospace",
+              }}
+            >ALL</button>
+            {AE_LIST.map(ae => (
+              <button
+                key={ae.email}
+                onClick={() => setAeFilter(ae.email)}
+                title={ae.name}
+                style={{
+                  width: 28, height: 28, borderRadius: "50%",
+                  background: aeFilter === ae.email ? `${ae.color}25` : "transparent",
+                  border: `1.5px solid ${aeFilter === ae.email ? ae.color : "rgba(255,255,255,0.06)"}`,
+                  color: ae.color, fontSize: 10, fontWeight: 700, cursor: "pointer",
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >{ae.initials}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── MAIN CONTENT ── */}
+      <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 24px 48px" }}>
+
+        {/* ════ ACTION QUEUE ════ */}
+        {tab === "tasks" && (
+          <div style={{ animation: "slideUp 0.3s ease" }}>
+            {/* Summary strip */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 24 }}>
+              {[
+                { label: "Pending",  val: pendingTasks.length,  color: "#3b82f6" },
+                { label: "Urgent",   val: urgentCount,           color: "#ef4444" },
+                { label: "Sent",     val: sentTasks.length,      color: "#10b981" },
+                { label: "Pipeline", val: pipelinePending,       color: "#f59e0b" },
+              ].map(s => (
+                <div key={s.label} style={{ padding: "12px 14px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, borderTop: `2px solid ${s.color}` }}>
+                  <div style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", marginBottom: 5 }}>{s.label}</div>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: "#f8fafc", fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.val}</div>
+                </div>
+              ))}
             </div>
 
-            {/* Step bar */}
-            {(isRunning || isDone) && (
-              <StepBar steps={STEPS} currentStep={currentStep} isDone={isDone} />
-            )}
+            {/* Follow-up legend */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
+              {Object.entries(FU_CONFIG).map(([key, cfg]) => (
+                <div key={key} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: `${cfg.color}10`, border: `1px solid ${cfg.color}25` }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: cfg.color }} />
+                  <span style={{ fontSize: 11, color: cfg.color, fontFamily: "'JetBrains Mono', monospace" }}>{cfg.badge} — Day {cfg.day}</span>
+                </div>
+              ))}
+            </div>
 
-            {/* Main CTA */}
-            {!isRunning ? (
-              <div style={{ marginBottom: 24 }}>
-                <button
-                  className="run-btn"
-                  onClick={handleRun}
-                  style={{
-                    background: isDone
-                      ? "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08))"
-                      : "linear-gradient(135deg, #f59e0b, #d97706)",
-                    color: isDone ? "#10b981" : "#0a0d14",
-                    border: isDone ? "1px solid rgba(16,185,129,0.3)" : "none",
-                  }}
-                >
-                  {isRunning ? "Running…" : isDone ? "✓ Run Autopilot Again" : "▶  Activate Autopilot"}
-                </button>
-                {!isDone && !isError && (
-                  <p style={{ margin: "10px 0 0", fontSize: 12, color: "#475569", textAlign: "center", fontFamily: "'DM Mono', monospace" }}>
-                    Reads {actionable.length} open deals · writes follow-ups in Said's voice · logs to HubSpot · closes stale deals
-                  </p>
-                )}
+            {/* Task cards */}
+            {pendingTasks.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "48px 24px", color: "#334155" }}>
+                <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#475569", marginBottom: 6 }}>Action queue is clear</div>
+                <div style={{ fontSize: 13, color: "#334155" }}>Sync Avoma to check for new completed meetings</div>
               </div>
             ) : (
-              <div style={{
-                marginBottom: 24, padding: "12px 16px", borderRadius: 10,
-                background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
-                display: "flex", alignItems: "center", gap: 10,
-              }}>
-                <div style={{ width: 16, height: 16, border: "2px solid #f59e0b", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
-                <span style={{ fontSize: 13, color: "#f59e0b", fontWeight: 500 }}>Autopilot running — keep this tab open</span>
-              </div>
-            )}
-
-            {/* Deal queue */}
-            {actionable.length > 0 && (
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
-                    Action Queue
-                  </p>
-                  <span style={{ fontSize: 11, color: "#475569", fontFamily: "'DM Mono', monospace" }}>{actionable.length} deals</span>
-                </div>
-                <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-                  {actionable.map((deal, i) => (
-                    <DealRow key={deal.id} deal={deal} onEdit={editDealAction} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Activity log */}
-            {log.length > 0 && (
-              <div>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
-                  Activity Log
-                </p>
-                <div
-                  ref={logRef}
-                  style={{
-                    background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)",
-                    borderRadius: 10, padding: "12px 14px", maxHeight: 220, overflowY: "auto",
-                    fontFamily: "'DM Mono', monospace", fontSize: 12,
-                  }}
-                >
-                  {log.map((e, i) => (
-                    <div key={i} style={{ display: "flex", gap: 12, marginBottom: 4, alignItems: "flex-start", lineHeight: 1.5 }}>
-                      <span style={{ color: "#334155", flexShrink: 0 }}>{e.ts}</span>
-                      <span style={{ color: LOG_COLOR[e.type] || "#64748b" }}>{e.msg}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Email drafts preview */}
-            {Object.keys(emailDrafts).length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
-                  Sent Emails
-                </p>
-                {Object.entries(emailDrafts).map(([id, draft]) => {
-                  const d = deals.find(x => x.id === id);
-                  return d ? (
-                    <div key={id} style={{ marginBottom: 12, padding: "12px 14px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10 }}>
-                      <p style={{ margin: "0 0 6px", fontSize: 12, color: "#f59e0b", fontFamily: "'DM Mono', monospace" }}>{d.contactName} · {d.company}</p>
-                      <pre style={{ margin: 0, fontSize: 12, color: "#94a3b8", whiteSpace: "pre-wrap", fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>{draft.slice(0, 400)}{draft.length > 400 ? "…" : ""}</pre>
-                    </div>
-                  ) : null;
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ════ PIPELINE INTEL TAB ════ */}
-        {tab === "pipeline" && (
-          <div style={{ animation: "slide-up 0.3s ease" }}>
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "#f8fafc" }}>Pipeline Intelligence</p>
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b", fontFamily: "'DM Mono', monospace" }}>
-                Pre-loaded from Avoma transcripts — May 1–14
-              </p>
-            </div>
-
-            {/* Summary row */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
-              <StatCard label="Open deals"    value={deals.filter(d => d.action !== "none" && d.dealStage !== "Closed Won ✓" && d.dealStage !== "Closed Lost").length} accent="#f59e0b" />
-              <StatCard label="Closed won"    value={deals.filter(d => d.dealStage === "Closed Won ✓").length}  accent="#10b981" />
-              <StatCard label="Need action"   value={actionable.length} accent="#ef4444" />
-            </div>
-
-            <div style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, overflow: "hidden" }}>
-              {deals.map((deal, i) => {
-                const meta = ACTION[deal.action] || ACTION.none;
-                return (
-                  <div key={deal.id} style={{ borderBottom: i < deals.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                    <div style={{ padding: "14px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
-                      <Avatar
-                        initials={deal.contactName.split(" ").map(n => n[0]).join("").slice(0, 2)}
-                        size={36}
-                        color={meta.color}
-                      />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
-                          <span style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{deal.contactName}</span>
-                          <span style={{ fontSize: 12, color: "#475569", fontFamily: "'DM Mono', monospace" }}>{deal.company}</span>
-                          <Badge label={meta.label} color={meta.color} bg={meta.bg} />
-                        </div>
-                        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 8 }}>
-                          <span style={{ fontSize: 11, color: "#64748b", fontFamily: "'DM Mono', monospace" }}>AE: {deal.ae}</span>
-                          <span style={{ fontSize: 11, color: "#64748b", fontFamily: "'DM Mono', monospace" }}>Value: {deal.value}</span>
-                          <span style={{ fontSize: 11, color: "#64748b", fontFamily: "'DM Mono', monospace" }}>Stage: {deal.dealStage}</span>
-                        </div>
-                        <p style={{ margin: 0, fontSize: 12, color: "#475569", lineHeight: 1.6, fontFamily: "'Sora', sans-serif" }}>
-                          {deal.context.slice(0, 180)}…
-                        </p>
-                        {deal.nextStep && deal.action !== "none" && (
-                          <p style={{ margin: "6px 0 0", fontSize: 11, color: "#f59e0b", fontFamily: "'DM Mono', monospace" }}>
-                            → {deal.nextStep}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ════ TEAM TAB ════ */}
-        {tab === "team" && (
-          <div style={{ animation: "slide-up 0.3s ease" }}>
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "#f8fafc" }}>Sales Team</p>
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b", fontFamily: "'DM Mono', monospace" }}>Warmy.io · Tel Aviv / Remote</p>
-            </div>
-            <div style={{ display: "grid", gap: 10 }}>
-              {TEAM.map(m => (
-                <div key={m.email} style={{
-                  display: "flex", alignItems: "center", gap: 14, padding: "14px 16px",
-                  background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12,
-                }}>
-                  <Avatar initials={m.avatar} size={40} color={m.name === "Said Karaca" ? "#f59e0b" : "#64748b"} />
-                  <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>
-                      {m.name}
-                      {m.name === "Said Karaca" && <span style={{ marginLeft: 8, fontSize: 10, color: "#f59e0b", fontFamily: "'DM Mono', monospace", verticalAlign: "middle" }}>YOU</span>}
-                    </p>
-                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#475569", fontFamily: "'DM Mono', monospace" }}>{m.role} · {m.email}</p>
-                  </div>
-                  {/* Deal count for this AE */}
-                  {(() => {
-                    const count = deals.filter(d => d.ae === m.name && d.action !== "none").length;
-                    return count > 0 ? (
-                      <Badge label={`${count} open`} color="#f59e0b" bg="rgba(245,158,11,0.08)" />
-                    ) : null;
-                  })()}
-                </div>
-              ))}
-            </div>
-
-            {/* Deal ownership breakdown */}
-            <div style={{ marginTop: 20 }}>
-              <p style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
-                Deal Ownership
-              </p>
-              {TEAM.filter(m => deals.some(d => d.ae === m.name)).map(m => {
-                const aeDeals = deals.filter(d => d.ae === m.name);
-                return (
-                  <div key={m.email} style={{ marginBottom: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
-                      <span style={{ fontSize: 12, color: "#94a3b8", fontFamily: "'DM Mono', monospace" }}>{m.name}</span>
-                      <span style={{ fontSize: 12, color: "#64748b", fontFamily: "'DM Mono', monospace" }}>{aeDeals.length} deals</span>
-                    </div>
-                    <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${(aeDeals.length / deals.length) * 100}%`, background: m.name === "Said Karaca" ? "#f59e0b" : "#3b82f6", borderRadius: 2, transition: "width 0.5s ease" }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ════ STYLE TAB ════ */}
-        {tab === "style" && (
-          <div style={{ animation: "slide-up 0.3s ease" }}>
-            <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 4px", fontSize: 22, fontWeight: 700, color: "#f8fafc" }}>Said's Email Style</p>
-              <p style={{ margin: 0, fontSize: 13, color: "#64748b", fontFamily: "'DM Mono', monospace" }}>
-                Learned from Avoma transcripts + Gmail sent history
-              </p>
-            </div>
-
-            {/* Style cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 20 }}>
-              {[
-                { label: "Tone",          value: SAID_STYLE.tone },
-                { label: "Avg length",    value: `~${SAID_STYLE.avgWords} words` },
-                { label: "Greeting",      value: SAID_STYLE.greeting },
-                { label: "Sign-off",      value: SAID_STYLE.closing.replace(/\n/g, " · ") },
-              ].map(s => (
-                <div key={s.label} style={{ padding: "14px 16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10 }}>
-                  <p style={{ margin: "0 0 4px", fontSize: 11, color: "#475569", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>{s.label}</p>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "#f1f5f9" }}>{s.value}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Opening patterns */}
-            <div style={{ marginBottom: 16 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
-                Signature Opening Patterns
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {SAID_STYLE.patterns.map((p, i) => (
-                  <span key={i} style={{ fontSize: 12, padding: "5px 12px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.2)", color: "#f59e0b", fontFamily: "'DM Mono', monospace", fontStyle: "italic" }}>
-                    "{p}"
-                  </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {pendingTasks.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    onDraftGenerated={handleDraftGenerated}
+                    onSend={handleSend}
+                    onPipelineAction={handlePipelineAction}
+                    onDismiss={handleDismiss}
+                  />
                 ))}
               </div>
-            </div>
+            )}
 
-            {/* Notes */}
-            <div style={{ padding: "14px 16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, marginBottom: 20 }}>
-              <p style={{ margin: "0 0 6px", fontSize: 11, color: "#475569", fontFamily: "'DM Mono', monospace", textTransform: "uppercase", letterSpacing: "0.06em" }}>Style Notes</p>
-              <p style={{ margin: 0, fontSize: 13, color: "#94a3b8", lineHeight: 1.7 }}>{SAID_STYLE.notes}</p>
-            </div>
-
-            {/* Email template preview */}
-            <div>
-              <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace" }}>
-                Example Follow-up (Max Nyirenda)
-              </p>
-              <div style={{ padding: "16px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10, fontFamily: "'DM Mono', monospace", fontSize: 13, lineHeight: 1.8, color: "#94a3b8" }}>
-                <span style={{ color: "#475569" }}>Subject: </span><span style={{ color: "#f1f5f9" }}>Re: Warmy seed list — quick update for Sat</span><br /><br />
-                <span style={{ color: "#f1f5f9" }}>Hi Max,</span><br /><br />
-                Putting together the breakdown you mentioned so you can send it straight to Sat. Short version: seed list gives you browser-based engagement with click tracking — which is exactly what you need for the EE campaigns. Standard plan can't do that.<br /><br />
-                For 10k seeds across both domains: <span style={{ color: "#f59e0b" }}>$1,600/mo</span> (with the 15% testimonial discount), or <span style={{ color: "#f59e0b" }}>$16k/yr</span> with 2 months free.<br /><br />
-                Happy to jump on a 10-min call with Sat if that would move things along — just say the word.<br /><br />
-                Cheers,<br />Said
+            {/* Sent/done */}
+            {sentTasks.length > 0 && (
+              <div style={{ marginTop: 24 }}>
+                <p style={{ margin: "0 0 10px", fontSize: 11, color: "#334155", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>Completed today</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {sentTasks.map(task => (
+                    <TaskCard
+                      key={task.id}
+                      task={task}
+                      onDraftGenerated={handleDraftGenerated}
+                      onSend={handleSend}
+                      onPipelineAction={handlePipelineAction}
+                      onDismiss={handleDismiss}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}at t
+        )}
 
+        {/* ════ PIPELINE CONTROL ════ */}
+        {tab === "pipeline" && (
+          <div style={{ animation: "slideUp 0.3s ease" }}>
+            <div style={{ marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Pipeline Control</h2>
+              <p style={{ fontSize: 13, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>HubSpot stage management — click to push deals forward</p>
+            </div>
+
+            {/* Pipeline stages visual */}
+            <div style={{ display: "flex", gap: 3, marginBottom: 24, overflowX: "auto", paddingBottom: 4 }}>
+              {["Demo Done", "Price Proposal Sent", "Negotiation", "Closed Won", "Closed Lost"].map((stage, i) => {
+                const count = tasks.filter(t => t.dealStage === stage).length;
+                const colors = ["#64748b", "#3b82f6", "#f59e0b", "#10b981", "#ef4444"];
+                return (
+                  <div key={stage} style={{ flex: 1, minWidth: 100 }}>
+                    <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderTop: `2px solid ${colors[i]}`, borderRadius: 8, textAlign: "center" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: colors[i], fontFamily: "'JetBrains Mono', monospace" }}>{count}</div>
+                      <div style={{ fontSize: 10, color: "#475569", marginTop: 2, lineHeight: 1.3 }}>{stage}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Deal list with pipeline actions */}
+            {tasks.filter(t => aeFilter === "all" || t.ae === aeFilter).map(task => {
+              const aeProfile = AE_PROFILES[task.ae];
+              const meta = FU_CONFIG[task.type];
+              return (
+                <div key={task.id} style={{
+                  padding: "14px 16px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
+                  borderRadius: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 12,
+                }}>
+                  <AEAvatar email={task.ae} size={34} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{task.contactName}</span>
+                      <span style={{ fontSize: 12, color: "#475569" }}>· {task.company}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 10 }}>
+                      <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>{aeProfile?.name}</span>
+                      <span style={{ fontSize: 11, color: "#334155" }}>·</span>
+                      <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>{task.dealValue}</span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Badge label={task.dealStage} color={
+                      task.dealStage === "Closed Won" ? "#10b981" :
+                      task.dealStage === "Closed Lost" ? "#ef4444" :
+                      task.dealStage === "Negotiation" ? "#f59e0b" : "#3b82f6"
+                    } />
+                    {task.pipelineStatus === "pending" && (
+                      <Badge label="NEEDS UPDATE" color="#f59e0b" />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* ════ MEETING ANALYSIS ════ */}
+        {tab === "analysis" && (
+          <div style={{ animation: "slideUp 0.3s ease" }}>
+            <div style={{ marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Meeting Analysis</h2>
+              <p style={{ fontSize: 13, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>AI-generated from Avoma transcripts — what each AE did well and where to improve</p>
+            </div>
+
+            {/* Team score overview */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 24 }}>
+              {Object.entries(AE_PROFILES).map(([email, ae]) => {
+                const aeAnalyses = MEETING_ANALYSES.filter(a => a.ae === email);
+                if (aeAnalyses.length === 0) return null;
+                const avgScore = Math.round(aeAnalyses.reduce((s, a) => s + a.score, 0) / aeAnalyses.length);
+                const scoreColor = avgScore >= 85 ? "#10b981" : avgScore >= 75 ? "#f59e0b" : "#ef4444";
+                return (
+                  <div key={email} style={{ padding: "14px 16px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                    <AEAvatar email={email} size={40} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9", marginBottom: 2 }}>{ae.name}</div>
+                      <div style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>{aeAnalyses.length} meetings analysed</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 24, fontWeight: 800, color: scoreColor, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{avgScore}</div>
+                      <div style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>avg score</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Analysis cards */}
+            {MEETING_ANALYSES
+              .filter(a => aeFilter === "all" || a.ae === aeFilter)
+              .map(a => <MeetingAnalysisCard key={a.id} analysis={a} />)
+            }
+          </div>
+        )}
       </div>
     </div>
   );
