@@ -30,8 +30,108 @@ app.post("/api/claude", async (req, res) => {
 });
 
 /* ─────────────────────────────────────────────────────
-   /api/hubspot-pipeline — Pull live deal stages for AE team
+   /api/hubspot-update — Update a deal stage directly
 ───────────────────────────────────────────────────── */
+app.post("/api/hubspot-update", async (req, res) => {
+  const HS_TOKEN = process.env.HUBSPOT_TOKEN;
+  if (!HS_TOKEN) return res.status(400).json({ error: "HUBSPOT_TOKEN not set" });
+
+  const { dealId, stage, note } = req.body;
+  if (!dealId || !stage) return res.status(400).json({ error: "dealId and stage required" });
+
+  const STAGE_ID_MAP = {
+    meeting_scheduled: "86886808",
+    proposal_sent:     "86886810",
+    negotiation:       "86886811",
+    closed_won:        "86886813",
+    closed_lost:       "86886814",
+    disqualified:      "86907056",
+  };
+
+  const stageId = STAGE_ID_MAP[stage];
+  if (!stageId) return res.status(400).json({ error: `Unknown stage: ${stage}` });
+
+  try {
+    const { default: fetch } = await import("node-fetch");
+
+    // Update deal stage
+    const updateResp = await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${dealId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${HS_TOKEN}`,
+      },
+      body: JSON.stringify({ properties: { dealstage: stageId } }),
+    });
+
+    if (!updateResp.ok) {
+      const err = await updateResp.text();
+      return res.status(500).json({ error: `HubSpot update failed: ${err}` });
+    }
+
+    // Add note if provided
+    if (note) {
+      await fetch("https://api.hubapi.com/crm/v3/objects/notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${HS_TOKEN}`,
+        },
+        body: JSON.stringify({
+          properties: {
+            hs_note_body: note,
+            hs_timestamp: new Date().toISOString(),
+          },
+          associations: [{
+            to: { id: dealId },
+            types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 214 }],
+          }],
+        }),
+      });
+    }
+
+    res.json({ success: true, dealId, stage, stageId });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* ─────────────────────────────────────────────────────
+   /api/hubspot-log — Log activity on a deal
+───────────────────────────────────────────────────── */
+app.post("/api/hubspot-log", async (req, res) => {
+  const HS_TOKEN = process.env.HUBSPOT_TOKEN;
+  if (!HS_TOKEN) return res.status(400).json({ error: "HUBSPOT_TOKEN not set" });
+
+  const { dealId, note } = req.body;
+  if (!dealId) return res.status(400).json({ error: "dealId required" });
+
+  try {
+    const { default: fetch } = await import("node-fetch");
+
+    await fetch("https://api.hubapi.com/crm/v3/objects/notes", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${HS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        properties: {
+          hs_note_body: note || `Activity logged — ${new Date().toLocaleDateString("en-GB")}`,
+          hs_timestamp: new Date().toISOString(),
+        },
+        associations: [{
+          to: { id: dealId },
+          types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 214 }],
+        }],
+      }),
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 app.get("/api/hubspot-pipeline", async (req, res) => {
   const HS_TOKEN = process.env.HUBSPOT_TOKEN;
   if (!HS_TOKEN) {

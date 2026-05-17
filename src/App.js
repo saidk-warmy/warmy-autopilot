@@ -1165,14 +1165,14 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
   const handleStageChange = async (newStage, reason) => {
     setLoading(true);
     try {
-      await callClaude(
-        "You are a HubSpot automation assistant for Warmy.io sales pipeline.",
-        `Use HubSpot MCP to update deal ID ${deal.hubspotId || "unknown"} for contact "${deal.contactName}" at "${deal.company}":
-1. Move deal stage to "${PIPELINE_STAGES[newStage]?.label || newStage}"
-2. Add note: "Stage updated to ${PIPELINE_STAGES[newStage]?.label} — ${new Date().toLocaleDateString("en-GB")}${reason ? ". Reason: " + reason : ""}"
-${newStage === "closed_lost" ? '3. Set loss reason: "' + (reason || "No response / rejected") + '"' : ""}
-${newStage === "disqualified" ? '3. Set disqualification reason: "' + (reason || "No-show") + '"' : ""}`
-      );
+      const note = `Stage updated to ${PIPELINE_STAGES[newStage]?.label || newStage} — ${new Date().toLocaleDateString("en-GB")}${reason ? ". Reason: " + reason : ""}`;
+      const resp = await fetch("/api/hubspot-update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: deal.hubspotId, stage: newStage, note }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || "Update failed");
       onStageChange(deal.id, newStage, reason);
     } catch (e) {
       alert("HubSpot update failed: " + e.message);
@@ -1183,12 +1183,13 @@ ${newStage === "disqualified" ? '3. Set disqualification reason: "' + (reason ||
   const handleDay3Done = async () => {
     setLoading(true);
     try {
-      await callClaude(
-        "You are a HubSpot automation assistant.",
-        `Use HubSpot MCP to log a follow-up activity on deal for "${deal.contactName}" at "${deal.company}" (ID: ${deal.hubspotId}):
-1. Log email activity with note: "Day-3 follow-up sent — ${new Date().toLocaleDateString("en-GB")}"
-2. Update last contact date to today`
-      );
+      const resp = await fetch("/api/hubspot-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: deal.hubspotId, note: `Day-3 follow-up sent — ${new Date().toLocaleDateString("en-GB")}` }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || "Log failed");
       onFollowUpDone(deal.id);
     } catch (e) {
       alert("HubSpot log failed: " + e.message);
@@ -1199,12 +1200,13 @@ ${newStage === "disqualified" ? '3. Set disqualification reason: "' + (reason ||
   const handleLogActivity = async () => {
     setLoading(true);
     try {
-      await callClaude(
-        "You are a HubSpot automation assistant.",
-        `Use HubSpot MCP to log activity on deal for "${deal.contactName}" at "${deal.company}" (ID: ${deal.hubspotId}):
-1. Add note: "Activity logged — ${new Date().toLocaleDateString("en-GB")} — clock reset for Negotiation stage"
-2. Update last activity date to today`
-      );
+      const resp = await fetch("/api/hubspot-log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId: deal.hubspotId, note: `Activity logged — ${new Date().toLocaleDateString("en-GB")} — Negotiation clock reset` }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || data.error) throw new Error(data.error || "Log failed");
       onLogActivity(deal.id);
     } catch (e) {
       alert("HubSpot log failed: " + e.message);
