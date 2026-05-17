@@ -469,6 +469,154 @@ const MEETING_ANALYSES = [
 /* ═══════════════════════════════════════════════════════
    API
 ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   PIPELINE PLAYBOOK CONFIG
+═══════════════════════════════════════════════════════ */
+const PIPELINE_STAGES = {
+  meeting_scheduled: { label: "Meeting Scheduled", color: "#64748b", bg: "rgba(100,116,139,0.12)", order: 0 },
+  proposal_sent:     { label: "Price Proposal Sent", color: "#3b82f6", bg: "rgba(59,130,246,0.12)", order: 1 },
+  negotiation:       { label: "Negotiation", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", order: 2 },
+  disqualified:      { label: "Disqualified", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", order: 3 },
+  closed_won:        { label: "Closed Won ✓", color: "#10b981", bg: "rgba(16,185,129,0.12)", order: 4 },
+  closed_lost:       { label: "Closed Lost", color: "#ef4444", bg: "rgba(239,68,68,0.12)", order: 5 },
+};
+
+// Compute what action is required and urgency based on playbook rules
+function getPipelineAction(deal) {
+  const d = deal.daysInStage;
+  const stage = deal.stage;
+
+  if (stage === "meeting_scheduled") {
+    if (deal.noShow) return { type: "mark_disqualified", label: "Mark No-Show / Disqualify", color: "#8b5cf6", urgency: "high", description: "Prospect didn't join — add disqualification reason and move on." };
+    return { type: "move_proposal", label: "Move → Price Proposal Sent", color: "#3b82f6", urgency: "medium", description: "Prospect joined the call. Move the deal to Price Proposal Sent and send the proposal." };
+  }
+  if (stage === "proposal_sent") {
+    if (d >= 10) return { type: "auto_close_warning", label: "⚠ Mark Closed Lost NOW", color: "#ef4444", urgency: "critical", description: `Day ${d} — AUTO-CLOSE triggered. No activity after Day 9. Mark lost immediately or it closes automatically.` };
+    if (d >= 9) return { type: "day9_decision", label: "Day 9 Decision Required", color: "#ef4444", urgency: "critical", description: "Final day. Move to Negotiation if discussions are alive, or mark Closed Lost." };
+    if (d >= 3 && !deal.followUpSentDay3) return { type: "day3_followup", label: "Send Day-3 Follow-up", color: "#f59e0b", urgency: "high", description: `Day ${d} — Follow-up is due. Send email, log activity in HubSpot, then mark this done.` };
+    if (d >= 3 && deal.followUpSentDay3) return { type: "waiting", label: "Waiting for reply", color: "#64748b", urgency: "low", description: `Follow-up sent on Day 3. Monitoring for reply.` };
+    return { type: "waiting", label: `Day ${d} of 10 — On track`, color: "#64748b", urgency: "low", description: `Proposal sent ${d} day${d !== 1 ? "s" : ""} ago. Day-3 follow-up will be due soon.` };
+  }
+  if (stage === "negotiation") {
+    if (d >= 10) return { type: "negotiation_auto_close", label: "⚠ Mark Closed Lost NOW", color: "#ef4444", urgency: "critical", description: `Day ${d} in Negotiation — 10-day cap hit. Log activity to reset clock or mark lost.` };
+    if (d >= 7) return { type: "negotiation_warning", label: "Log Activity or Close", color: "#f97316", urgency: "high", description: `Day ${d}/10 in Negotiation. ${10 - d} days left before auto-close. Log a call, email, or note.` };
+    return { type: "negotiation_active", label: `Day ${d}/10 in Negotiation`, color: "#f59e0b", urgency: "medium", description: "Keep activity logged. Silence for 10 days triggers auto-close." };
+  }
+  return { type: "none", label: "No action needed", color: "#10b981", urgency: "none", description: "Deal is in a terminal state." };
+}
+
+// Seeded pipeline deals from real HubSpot + Avoma data
+const INITIAL_PIPELINE = [
+  {
+    id: "P001", hubspotId: "60269536179",
+    contactName: "Muhammad Hussnain", contactEmail: "muhammad.hussnain@codingcops.com",
+    company: "CodingCops", ae: "felipev@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$500/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Felipe offered $5/mailbox × 100 = $500/mo. Offer valid until Tuesday. Muhammad needs head of sales approval.",
+  },
+  {
+    id: "P002", hubspotId: "60255907209",
+    contactName: "Scott Conlin", contactEmail: "scott@noveltylights.com",
+    company: "Novelty Lights", ae: "jorget@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$358/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Wants to start in June. Scott said he'd reach out next week. Seasonal business — Oct-Dec peak.",
+  },
+  {
+    id: "P003", hubspotId: "60234223726",
+    contactName: "Caitlin Marco", contactEmail: "caitlin.marco@opal.dev",
+    company: "Opal.dev", ae: "jorget@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$360 (90% prob)",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "HubSpot shows 90% close probability. High priority follow-up.",
+  },
+  {
+    id: "P004", hubspotId: "60072037522",
+    contactName: "Mat Sykes", contactEmail: "matthew.sykes@recolutiongroup.com",
+    company: "Recolution Group", ae: "sofiiar@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$290-440/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Sofiia promised post-call summary. Mat said 2 weeks to decide internally.",
+  },
+  {
+    id: "P005", hubspotId: "60249987662",
+    contactName: "Sabreena Shafi", contactEmail: "sabreena.shafi@cloudhire.ai",
+    company: "CloudHire.ai", ae: "sofiiar@warmy.io",
+    stage: "proposal_sent", daysInStage: 2, dealValue: "$435",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-15",
+    notes: "Proposal call completed. Sofiia promised summary + payment link.",
+  },
+  {
+    id: "P006", hubspotId: "60206388020",
+    contactName: "Jamie Anderson", contactEmail: "jamie.anderson@kodiakhub.com",
+    company: "KodiakHub", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 4, dealValue: "$450/mo",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-13",
+    notes: "CFO approval needed by end of May. No reply yet. Day 3 follow-up overdue.",
+  },
+  {
+    id: "P007", hubspotId: "60221215634",
+    contactName: "Vihar Naik", contactEmail: "viharnaik@callhippo.com",
+    company: "CallHippo", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 4, dealValue: "$540",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-13",
+    notes: "Demo done May 13. No reply since. Day 3 follow-up overdue.",
+  },
+  {
+    id: "P008", hubspotId: "60204877705",
+    contactName: "Yuvraj Karle", contactEmail: "yuvraj@performifymedia.com",
+    company: "PerformifyMedia", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 4, dealValue: "$450",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-13",
+    notes: "Demo done May 13. No reply since. Day 3 follow-up overdue.",
+  },
+  {
+    id: "P009", hubspotId: "60176200355",
+    contactName: "Benjamin Kouba", contactEmail: "ben@leaf9.com",
+    company: "Leaf9", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 5, dealValue: "$49",
+    followUpSentDay3: true, noShow: false,
+    lastActivity: "2026-05-14",
+    notes: "Day 5. Follow-up sent. No reply. Approaching Day 9 decision point.",
+  },
+  {
+    id: "P010", hubspotId: "60180404892",
+    contactName: "Freddie Gonzalez", contactEmail: "freddie@pzerotalent.co",
+    company: "PzeroTalent", ae: "gokhank@warmy.io",
+    stage: "proposal_sent", daysInStage: 5, dealValue: "$210",
+    followUpSentDay3: true, noShow: false,
+    lastActivity: "2026-05-14",
+    notes: "Day 5. Follow-up sent. No reply. Approaching Day 9 decision point.",
+  },
+  {
+    id: "P011", hubspotId: "60254728339",
+    contactName: "Pedro Silva", contactEmail: "lfv1.cad@agemobi.com",
+    company: "Agemobi", ae: "jorget@warmy.io",
+    stage: "meeting_scheduled", daysInStage: 3, dealValue: "TBD",
+    followUpSentDay3: false, noShow: false,
+    lastActivity: "2026-05-14",
+    notes: "Demo completed May 14. Needs to be moved to Price Proposal Sent.",
+  },
+  {
+    id: "P012", hubspotId: "60034986380",
+    contactName: "Matthias", contactEmail: "matthias@prospect.com",
+    company: "Unknown", ae: "sofiiar@warmy.io",
+    stage: "proposal_sent", daysInStage: 12, dealValue: "$679",
+    followUpSentDay3: true, noShow: false,
+    lastActivity: "2026-05-12",
+    notes: "Day 12 — PAST AUTO-CLOSE threshold. HubSpot deal at 50% probability. Needs immediate action.",
+  },
+];
+
 const MCP = [
   { type: "url", url: "https://mcp.hubspot.com/anthropic",      name: "hubspot" },
   { type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1", name: "gmail"   },
@@ -819,6 +967,230 @@ ${stage === "Closed Lost" ? '4. Set loss reason: "No response after 4 follow-up 
   );
 }
 
+function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }) {
+  const [expanded, setExpanded] = useState(false);
+  const [disqualReason, setDisqualReason] = useState("");
+  const [showDisqualModal, setShowDisqualModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const action = getPipelineAction(deal);
+  const stageConfig = PIPELINE_STAGES[deal.stage] || PIPELINE_STAGES.meeting_scheduled;
+  const aeProfile = AE_PROFILES[deal.ae] || {};
+
+  const urgencyBorder = {
+    critical: "#ef4444", high: "#f59e0b", medium: "#3b82f6", low: "rgba(255,255,255,0.07)", none: "rgba(255,255,255,0.07)"
+  }[action.urgency];
+
+  const handleStageChange = async (newStage, reason) => {
+    setLoading(true);
+    try {
+      await callClaude(
+        "You are a HubSpot automation assistant for Warmy.io sales pipeline.",
+        `Use HubSpot MCP to update deal ID ${deal.hubspotId || "unknown"} for contact "${deal.contactName}" at "${deal.company}":
+1. Move deal stage to "${PIPELINE_STAGES[newStage]?.label || newStage}"
+2. Add note: "Stage updated to ${PIPELINE_STAGES[newStage]?.label} — ${new Date().toLocaleDateString("en-GB")}${reason ? ". Reason: " + reason : ""}"
+${newStage === "closed_lost" ? '3. Set loss reason: "' + (reason || "No response / rejected") + '"' : ""}
+${newStage === "disqualified" ? '3. Set disqualification reason: "' + (reason || "No-show") + '"' : ""}`
+      );
+      onStageChange(deal.id, newStage, reason);
+    } catch (e) {
+      alert("HubSpot update failed: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleDay3Done = async () => {
+    setLoading(true);
+    try {
+      await callClaude(
+        "You are a HubSpot automation assistant.",
+        `Use HubSpot MCP to log a follow-up activity on deal for "${deal.contactName}" at "${deal.company}" (ID: ${deal.hubspotId}):
+1. Log email activity with note: "Day-3 follow-up sent — ${new Date().toLocaleDateString("en-GB")}"
+2. Update last contact date to today`
+      );
+      onFollowUpDone(deal.id);
+    } catch (e) {
+      alert("HubSpot log failed: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleLogActivity = async () => {
+    setLoading(true);
+    try {
+      await callClaude(
+        "You are a HubSpot automation assistant.",
+        `Use HubSpot MCP to log activity on deal for "${deal.contactName}" at "${deal.company}" (ID: ${deal.hubspotId}):
+1. Add note: "Activity logged — ${new Date().toLocaleDateString("en-GB")} — clock reset for Negotiation stage"
+2. Update last activity date to today`
+      );
+      onLogActivity(deal.id);
+    } catch (e) {
+      alert("HubSpot log failed: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <>
+      {/* Disqualify modal */}
+      {showDisqualModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#0f1623", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 14, padding: 24, width: "100%", maxWidth: 440 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 700, color: "#f1f5f9" }}>Mark as Disqualified / No-Show</p>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "#64748b" }}>Required: write a specific reason why this deal is being disqualified.</p>
+            <textarea
+              value={disqualReason}
+              onChange={e => setDisqualReason(e.target.value)}
+              placeholder="e.g. Prospect no-show, didn't respond to rebook attempts. Wrong ICP — sends <10 emails/day."
+              style={{ width: "100%", minHeight: 90, padding: 10, background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#cbd5e1", fontSize: 13, fontFamily: "'JetBrains Mono', monospace", resize: "vertical", boxSizing: "border-box", outline: "none" }}
+            />
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <button
+                onClick={() => { if (!disqualReason.trim()) return; handleStageChange("disqualified", disqualReason); setShowDisqualModal(false); }}
+                disabled={!disqualReason.trim() || loading}
+                style={{ flex: 1, padding: "10px 14px", borderRadius: 8, background: disqualReason.trim() ? "rgba(139,92,246,0.15)" : "rgba(255,255,255,0.04)", border: `1px solid ${disqualReason.trim() ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.08)"}`, color: disqualReason.trim() ? "#8b5cf6" : "#334155", fontSize: 13, fontWeight: 600, cursor: disqualReason.trim() ? "pointer" : "not-allowed", fontFamily: "'JetBrains Mono', monospace" }}
+              >Confirm Disqualified</button>
+              <button onClick={() => setShowDisqualModal(false)} style={{ padding: "10px 14px", borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.07)", color: "#475569", fontSize: 13, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ background: "rgba(255,255,255,0.025)", border: `1px solid ${urgencyBorder}`, borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `3px solid ${action.color}` }}>
+        {/* Header */}
+        <div onClick={() => setExpanded(e => !e)} style={{ padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+          <AEAvatar email={deal.ae} size={34} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{deal.contactName}</span>
+              <span style={{ fontSize: 12, color: "#475569" }}>· {deal.company}</span>
+              <Badge label={stageConfig.label} color={stageConfig.color} />
+              {action.urgency === "critical" && <Badge label="⚠ URGENT" color="#ef4444" />}
+              {action.urgency === "high" && deal.stage !== "meeting_scheduled" && <Badge label={`Day ${deal.daysInStage}`} color="#f59e0b" />}
+            </div>
+            <span style={{ fontSize: 11, color: action.color, fontFamily: "'JetBrains Mono', monospace", fontWeight: 600 }}>{action.label}</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: "#334155" }}>{aeProfile.name?.split(" ")[0]}</span>
+            <span style={{ color: "#334155", fontSize: 12, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
+          </div>
+        </div>
+
+        {/* Expanded action panel */}
+        {expanded && (
+          <div style={{ padding: "0 16px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+            {/* Action description */}
+            <div style={{ margin: "12px 0", padding: "10px 12px", borderRadius: 8, background: `${action.color}10`, border: `1px solid ${action.color}25`, fontSize: 13, color: "#94a3b8", lineHeight: 1.6 }}>
+              <span style={{ color: action.color, fontWeight: 600 }}>What to do: </span>{action.description}
+            </div>
+
+            {/* Day progress bar for timed stages */}
+            {(deal.stage === "proposal_sent" || deal.stage === "negotiation") && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5, fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
+                  <span>Day {deal.daysInStage}</span>
+                  <span style={{ color: deal.daysInStage >= 9 ? "#ef4444" : deal.daysInStage >= 3 ? "#f59e0b" : "#10b981" }}>
+                    {deal.daysInStage >= 10 ? "AUTO-CLOSE NOW" : `${10 - deal.daysInStage} days left`}
+                  </span>
+                </div>
+                <div style={{ height: 4, background: "rgba(255,255,255,0.06)", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", borderRadius: 4, transition: "width 0.5s ease",
+                    width: `${Math.min((deal.daysInStage / 10) * 100, 100)}%`,
+                    background: deal.daysInStage >= 9 ? "#ef4444" : deal.daysInStage >= 3 ? "#f59e0b" : "#10b981",
+                  }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4, fontSize: 10, color: "#334155", fontFamily: "'JetBrains Mono', monospace" }}>
+                  <span>Day 0</span><span style={{ color: "#f59e0b" }}>Day 3 FU</span><span style={{ color: "#ef4444" }}>Day 9 Decision</span><span>Day 10 Auto-close</span>
+                </div>
+              </div>
+            )}
+
+            {/* Deal context */}
+            <div style={{ marginBottom: 14, padding: "8px 12px", background: "rgba(0,0,0,0.2)", borderRadius: 8 }}>
+              <p style={{ margin: "0 0 3px", fontSize: 10, color: "#334155", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>Notes</p>
+              <p style={{ margin: 0, fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{deal.notes}</p>
+            </div>
+
+            {/* Action buttons based on stage + playbook rules */}
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+
+              {/* Meeting Scheduled: join or no-show */}
+              {deal.stage === "meeting_scheduled" && (
+                <>
+                  <button onClick={() => handleStageChange("proposal_sent")} disabled={loading}
+                    style={{ flex: 1, minWidth: 160, padding: "10px 14px", borderRadius: 8, background: "rgba(59,130,246,0.12)", border: "1px solid rgba(59,130,246,0.3)", color: "#3b82f6", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                    ✓ Prospect Joined → Move to Proposal Sent
+                  </button>
+                  <button onClick={() => setShowDisqualModal(true)} disabled={loading}
+                    style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.25)", color: "#8b5cf6", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                    ✗ No-Show → Disqualify
+                  </button>
+                </>
+              )}
+
+              {/* Proposal Sent Day 3: follow-up button */}
+              {deal.stage === "proposal_sent" && deal.daysInStage >= 3 && !deal.followUpSentDay3 && deal.daysInStage < 9 && (
+                <button onClick={handleDay3Done} disabled={loading}
+                  style={{ flex: 1, minWidth: 160, padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                  ✉ Mark Day-3 Follow-up Sent ✓
+                </button>
+              )}
+
+              {/* Proposal Sent Day 9: negotiation or lost */}
+              {deal.stage === "proposal_sent" && deal.daysInStage >= 9 && (
+                <>
+                  <button onClick={() => handleStageChange("negotiation")} disabled={loading}
+                    style={{ flex: 1, minWidth: 130, padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                    → Move to Negotiation
+                  </button>
+                  <button onClick={() => handleStageChange("closed_lost", "No response after Day 9 — no active discussions")} disabled={loading}
+                    style={{ flex: 1, minWidth: 130, padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                    ✕ Mark Closed Lost
+                  </button>
+                </>
+              )}
+
+              {/* Auto-close warning Day 10+ */}
+              {deal.stage === "proposal_sent" && deal.daysInStage >= 10 && (
+                <button onClick={() => handleStageChange("closed_lost", `Auto-close: no activity for ${deal.daysInStage} days after proposal`)} disabled={loading}
+                  style={{ flex: 1, padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", color: "#ef4444", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                  ⚠ Mark Closed Lost (Auto-close overdue)
+                </button>
+              )}
+
+              {/* Negotiation: log activity or close */}
+              {deal.stage === "negotiation" && (
+                <>
+                  <button onClick={handleLogActivity} disabled={loading}
+                    style={{ flex: 1, minWidth: 130, padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                    ✎ Log Activity (Reset Clock)
+                  </button>
+                  <button onClick={() => handleStageChange("closed_won")} disabled={loading}
+                    style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.3)", color: "#10b981", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                    ✓ Closed Won
+                  </button>
+                  <button onClick={() => handleStageChange("closed_lost", "Negotiation stalled — no agreement reached")} disabled={loading}
+                    style={{ padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
+                    ✕ Closed Lost
+                  </button>
+                </>
+              )}
+
+              {loading && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", fontSize: 12, color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace" }}>
+                  <span style={{ display: "inline-block", animation: "spin 0.8s linear infinite" }}>⟳</span> Updating HubSpot…
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
 function MeetingAnalysisCard({ analysis }) {
   const [expanded, setExpanded] = useState(false);
   const aeProfile = AE_PROFILES[analysis.ae];
@@ -892,6 +1264,7 @@ function MeetingAnalysisCard({ analysis }) {
 export default function App() {
   const [tasks, setTasks]       = useState(INITIAL_TASKS);
   const [tab, setTab]           = useState("tasks");
+  const [pipeline, setPipeline] = useState(INITIAL_PIPELINE);
   const [aeFilter, setAeFilter] = useState("all");
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
@@ -996,6 +1369,21 @@ export default function App() {
     }
   };
 
+  // Pipeline handlers
+  const handlePipelineStageChange = (id, newStage, reason) => {
+    setPipeline(prev => prev.map(d => d.id === id ? { ...d, stage: newStage, daysInStage: 0, lastActivity: new Date().toISOString().split("T")[0] } : d));
+  };
+  const handleFollowUpDone = (id) => {
+    setPipeline(prev => prev.map(d => d.id === id ? { ...d, followUpSentDay3: true, lastActivity: new Date().toISOString().split("T")[0] } : d));
+  };
+  const handleLogActivity = (id) => {
+    setPipeline(prev => prev.map(d => d.id === id ? { ...d, daysInStage: 0, lastActivity: new Date().toISOString().split("T")[0] } : d));
+  };
+
+  // Active pipeline deals (not closed)
+  const activePipeline = pipeline.filter(d => !["closed_won", "closed_lost", "disqualified"].includes(d.stage) && (aeFilter === "all" || d.ae === aeFilter));
+  const pipelineUrgent = activePipeline.filter(d => ["critical", "high"].includes(getPipelineAction(d).urgency));
+
   const urgentCount = pendingTasks.filter(t => t.daysSinceMeeting >= 6).length;
   const pipelinePending = tasks.filter(t => t.pipelineStatus === "pending").length;
 
@@ -1003,7 +1391,7 @@ export default function App() {
 
   const TAB_CONFIG = [
     { id: "tasks",    label: "Action Queue",      count: pendingTasks.length },
-    { id: "pipeline", label: "Pipeline Control",  count: pipelinePending > 0 ? pipelinePending : null },
+    { id: "pipeline", label: "Pipeline Control",  count: pipelineUrgent.length > 0 ? pipelineUrgent.length : null },
     { id: "analysis", label: "Meeting Analysis",  count: null },
   ];
 
@@ -1234,61 +1622,116 @@ export default function App() {
         {/* ════ PIPELINE CONTROL ════ */}
         {tab === "pipeline" && (
           <div style={{ animation: "slideUp 0.3s ease" }}>
+
             <div style={{ marginBottom: 20 }}>
               <h2 style={{ fontSize: 20, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Pipeline Control</h2>
-              <p style={{ fontSize: 13, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>HubSpot stage management — click to push deals forward</p>
+              <p style={{ fontSize: 13, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
+                Playbook-driven — every step of the deal, one click to action
+              </p>
             </div>
 
-            {/* Pipeline stages visual */}
-            <div style={{ display: "flex", gap: 3, marginBottom: 24, overflowX: "auto", paddingBottom: 4 }}>
-              {["Demo Done", "Price Proposal Sent", "Negotiation", "Closed Won", "Closed Lost"].map((stage, i) => {
-                const count = tasks.filter(t => t.dealStage === stage).length;
-                const colors = ["#64748b", "#3b82f6", "#f59e0b", "#10b981", "#ef4444"];
+            {/* Day rules */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 24 }}>
+              {[
+                { label: "Day 0", sub: "Proposal sent", color: "#10b981" },
+                { label: "Day 3", sub: "Follow-up due", color: "#f59e0b" },
+                { label: "Day 9", sub: "Negotiate or Lost", color: "#ef4444" },
+                { label: "Day 10", sub: "Auto-close", color: "#6b7280" },
+              ].map(r => (
+                <div key={r.label} style={{ padding: "10px 12px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)", borderTop: `2px solid ${r.color}`, borderRadius: 8, textAlign: "center" }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: r.color, fontFamily: "'JetBrains Mono', monospace" }}>{r.label}</div>
+                  <div style={{ fontSize: 10, color: "#475569", marginTop: 3, lineHeight: 1.3 }}>{r.sub}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Stage counts */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 20, overflowX: "auto" }}>
+              {Object.entries(PIPELINE_STAGES).map(([key, s]) => {
+                const count = pipeline.filter(d => d.stage === key && (aeFilter === "all" || d.ae === aeFilter)).length;
+                if (count === 0 && ["closed_won","closed_lost","disqualified"].includes(key)) return null;
                 return (
-                  <div key={stage} style={{ flex: 1, minWidth: 100 }}>
-                    <div style={{ padding: "10px 12px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderTop: `2px solid ${colors[i]}`, borderRadius: 8, textAlign: "center" }}>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: colors[i], fontFamily: "'JetBrains Mono', monospace" }}>{count}</div>
-                      <div style={{ fontSize: 10, color: "#475569", marginTop: 2, lineHeight: 1.3 }}>{stage}</div>
-                    </div>
+                  <div key={key} style={{ flex: 1, minWidth: 90, padding: "8px 10px", background: s.bg, border: `1px solid ${s.color}30`, borderRadius: 8, textAlign: "center" }}>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: s.color, fontFamily: "'JetBrains Mono', monospace" }}>{count}</div>
+                    <div style={{ fontSize: 9, color: "#475569", marginTop: 2, lineHeight: 1.3 }}>{s.label}</div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Deal list with pipeline actions */}
-            {tasks.filter(t => aeFilter === "all" || t.ae === aeFilter).map(task => {
-              const aeProfile = AE_PROFILES[task.ae];
-              const meta = FU_CONFIG[task.type];
-              return (
-                <div key={task.id} style={{
-                  padding: "14px 16px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 12, marginBottom: 8, display: "flex", alignItems: "center", gap: 12,
-                }}>
-                  <AEAvatar email={task.ae} size={34} />
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "#f1f5f9" }}>{task.contactName}</span>
-                      <span style={{ fontSize: 12, color: "#475569" }}>· {task.company}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 10 }}>
-                      <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>{aeProfile?.name}</span>
-                      <span style={{ fontSize: 11, color: "#334155" }}>·</span>
-                      <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>{task.dealValue}</span>
-                    </div>
+            {/* Urgent banner */}
+            {pipelineUrgent.length > 0 && (
+              <div style={{ marginBottom: 20, padding: "12px 16px", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#ef4444", animation: "pulse 1.2s ease infinite", flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: "#ef4444", fontWeight: 600 }}>
+                  {pipelineUrgent.length} deal{pipelineUrgent.length !== 1 ? "s" : ""} need immediate action today
+                </span>
+              </div>
+            )}
+
+            {/* AE checklist */}
+            <div style={{ marginBottom: 20, padding: "14px 16px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 10 }}>
+              <p style={{ margin: "0 0 12px", fontSize: 11, fontWeight: 700, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>AE Owns These 4 Actions (Playbook)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {[
+                  { icon: "✗", text: "No-show → Disqualified + written reason", color: "#8b5cf6" },
+                  { icon: "✉", text: "Day-3 follow-up → tick done in pipeline", color: "#f59e0b" },
+                  { icon: "→", text: "Day-9 decision → Negotiation or Closed Lost", color: "#ef4444" },
+                  { icon: "✎", text: "Log activity in Negotiation (resets 10-day clock)", color: "#3b82f6" },
+                ].map((r, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 12, color: "#64748b" }}>
+                    <span style={{ color: r.color, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{r.icon}</span>
+                    {r.text}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Badge label={task.dealStage} color={
-                      task.dealStage === "Closed Won" ? "#10b981" :
-                      task.dealStage === "Closed Lost" ? "#ef4444" :
-                      task.dealStage === "Negotiation" ? "#f59e0b" : "#3b82f6"
-                    } />
-                    {task.pipelineStatus === "pending" && (
-                      <Badge label="NEEDS UPDATE" color="#f59e0b" />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                ))}
+              </div>
+            </div>
+
+            {/* Deal cards sorted by urgency */}
+            {activePipeline.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "40px 24px", color: "#334155" }}>
+                <div style={{ fontSize: 28, marginBottom: 10 }}>✓</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#475569" }}>Pipeline is clean — no active deals need action</div>
+              </div>
+            ) : (
+              <div>
+                {[...activePipeline]
+                  .sort((a, b) => {
+                    const order = { critical: 0, high: 1, medium: 2, low: 3, none: 4 };
+                    return (order[getPipelineAction(a).urgency] || 4) - (order[getPipelineAction(b).urgency] || 4);
+                  })
+                  .map(deal => (
+                    <PipelineDealCard
+                      key={deal.id}
+                      deal={deal}
+                      onStageChange={handlePipelineStageChange}
+                      onFollowUpDone={handleFollowUpDone}
+                      onLogActivity={handleLogActivity}
+                    />
+                  ))
+                }
+              </div>
+            )}
+
+            {/* Closed deals */}
+            {pipeline.filter(d => ["closed_won","closed_lost","disqualified"].includes(d.stage) && (aeFilter === "all" || d.ae === aeFilter)).length > 0 && (
+              <div style={{ marginTop: 24 }}>
+                <p style={{ margin: "0 0 10px", fontSize: 11, color: "#334155", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>Closed this period</p>
+                {pipeline.filter(d => ["closed_won","closed_lost","disqualified"].includes(d.stage) && (aeFilter === "all" || d.ae === aeFilter)).map(deal => {
+                  const s = PIPELINE_STAGES[deal.stage];
+                  return (
+                    <div key={deal.id} style={{ padding: "10px 14px", background: "rgba(255,255,255,0.015)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 10, marginBottom: 6, display: "flex", alignItems: "center", gap: 12 }}>
+                      <AEAvatar email={deal.ae} size={28} />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "#64748b" }}>{deal.contactName}</span>
+                        <span style={{ fontSize: 12, color: "#334155", marginLeft: 8 }}>· {deal.company}</span>
+                      </div>
+                      <Badge label={s.label} color={s.color} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
