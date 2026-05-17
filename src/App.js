@@ -3,47 +3,82 @@ import { useState, useRef, useEffect, useCallback } from "react";
 /* ═══════════════════════════════════════════════════════
    AE STYLE PROFILES — learned from Avoma transcripts
 ═══════════════════════════════════════════════════════ */
+// ── AE PROFILES — enriched from Avoma transcripts + HubSpot + Gmail ──────────
+// HubSpot May 1-17 closed won: Sofiia=38 deals $28k | Said=9 deals $26k | Felipe=24 deals $6k | Jorge=18 deals $3.3k | Gokhan=8 deals $795
+// Total closed pipeline (all time): 866 deals across AE team
 const AE_PROFILES = {
   "saidk@warmy.io": {
     name: "Said Karaca", initials: "SK", color: "#f59e0b",
     greeting: "Hi [Name],", closing: "Cheers,\nSaid",
-    tone: "direct, warm, consultative. Gets to the point fast. References the exact things discussed on the call.",
+    tone: "direct, warm, consultative. Gets to the point fast. References exact things discussed. CC's Felipe on complex pricing threads. Confident with enterprise and upsell deals.",
     avgWords: 75, role: "Head of Sales",
-    phrases: ["Yeah I mean, look —", "Alright, so here's the thing:", "Exactly, and by the way,"],
+    phrases: ["Yeah I mean, look —", "Alright, so here's the thing:", "Exactly, and by the way,", "Let me add Felipe here to help with pricing"],
+    // HubSpot stats (May 1-17): 9 closed won | $26,272 revenue | $2,919 avg deal size
+    // Biggest deals: Kyle ($7k), Brilliant Marketing ($7.1k upsell), Josef Lock ($2k), Kyberdirect ($1.2k+$0.9k upsell), GoInspire ($1.272k upsell)
+    // Pattern: Said handles high-value enterprise + upsell deals. Avg deal size ($2,919) is highest on the team.
+    // Gmail: Has weekly 1-1s with Felipe. Escalates complex prospects to Felipe for pricing. Daniel Shnaider (CEO) often escalates inbound to Said first.
+    // Probation review meeting with Felipe on May 14 — Felipe is on probation period.
+    stats: { deals_may: 9, revenue_may: 26272, avg_deal_may: 2919, rank_revenue: 2 },
   },
   "gokhank@warmy.io": {
     name: "Gokhan Koluman", initials: "GK", color: "#3b82f6",
     greeting: "Hi [Name],", closing: "Best,\nGokhan",
-    tone: "educational, structured, builds trust through expertise. Explains the 'why' behind everything. Consultative.",
+    tone: "educational, structured, rapport-first. Closes on the call frequently. Explains the 'why' behind everything. Uses personal connection (shared geography, pub prices, local references) to warm up quickly. Adjusts depth based on prospect's technical level.",
     avgWords: 100, role: "AE",
-    phrases: ["Just to clarify,", "As I mentioned on the call,", "When it comes to"],
+    phrases: ["Just to clarify,", "As I mentioned on the call,", "When it comes to", "How does that sound?"],
+    closingStyle: "Closes live on the call. Sends payment link during the meeting. Books onboarding before ending the call.",
+    // HubSpot stats (May 1-17): 8 closed won | $795 revenue | $99 avg deal size
+    // Note: Gokhan's low revenue/avg is misleading — he closes MANY calls live (Phil $49, Ben $49, Dorian $100, Reneldy $90)
+    // High volume of small-deal live closes. Strength = rapport + live close. Gap = deal sizing (spends 59 min on $100 deals).
+    // Confirmed from transcripts: live closes on Phil Mold (recruited), Dorian Lesnic (Cardneto), Ben Leaf9, Freddie PzeroTalent
+    stats: { deals_may: 8, revenue_may: 795, avg_deal_may: 99, rank_revenue: 5 },
+    coaching_notes: "Gokhan needs to qualify deal size earlier — 59 minutes on a $100 deal is a time management issue. His rapport skills are exceptional and he should focus on larger accounts where his live-close ability creates more leverage.",
   },
   "felipev@warmy.io": {
     name: "Felipe Vargas", initials: "FV", color: "#10b981",
     greeting: "Hey [Name],", closing: "Cheers,\nFelipe",
-    tone: "warm, conversational, Brazilian energy. Builds personal rapport fast. Uses 'man', 'brother', 'cool'. Moves naturally from small talk to business. Drops prices boldly and frames them as doing the prospect a favour. Ends with a clear deadline.",
+    tone: "warm, conversational, Brazilian energy. Builds personal rapport fast. Uses 'man', 'brother', 'cool'. Drops prices boldly. Ends with hard deadlines. CC's Said on complex threads.",
     avgWords: 80, role: "AE",
-    phrases: ["Then again,", "At the end of the day,", "Cool. Cool. Cool.", "I'll do everything I can to have you here working with us.", "I'll be waiting for you, brother."],
-    closingStyle: "Personal warmth + deadline. Always sets a specific follow-up date (e.g. 'I can hold this offer until Tuesday').",
-    notes: "Felipe uses 'then again' as a verbal filler constantly. Talks about deliverability in terms of business outcomes (revenue, responses). Very good at making the prospect feel like they're getting a special deal. Tends to go deep on consultative advice (email volume, infrastructure) before pitching.",
+    phrases: ["Then again,", "At the end of the day,", "Cool. Cool. Cool.", "I'll do everything I can to have you here working with us.", "I'll be waiting for you, brother.", "Gentle nudge here"],
+    closingStyle: "Sets hard Tuesday/end-of-week deadlines. Sends proposals within minutes of calls ending.",
+    // HubSpot stats (May 1-17): 24 closed won | $5,937 revenue | $247 avg deal size
+    // Biggest: Jane ($489), Mike ($489), Mastery Route ($1.2k), Livesoft upsell ($1k)
+    // Gmail insight: On probation period — review meeting with Said on May 14. Daniel escalates inbound to Felipe directly.
+    // Felipe's pricing strategy: drops aggressively (e.g., $49 → $5/mailbox for 100 accounts in one call). High volume but low ASP.
+    // He handles Warmy pricing negotiations on big threads (Tal/SlightEdge agency — $0.10/inbox negotiation, Said CC'd)
+    // Weekly 1-1 with Said every Thursday 7:30-8pm CEST (frequently rescheduled based on invite data)
+    stats: { deals_may: 24, revenue_may: 5937, avg_deal_may: 247, rank_revenue: 3 },
+    coaching_notes: "High deal volume (24 in 17 days) but low ASP ($247). Felipe needs price discipline — he drops too fast. On probation. Said reviews weekly.",
   },
   "sofiiar@warmy.io": {
     name: "Sofiia Rapatska", initials: "SR", color: "#8b5cf6",
     greeting: "Hi [Name],", closing: "Best,\nSofiia",
-    tone: "structured, thorough, technical but accessible. Asks deep discovery questions. Validates prospect's logic ('that's a very good approach'). Explains the 'why' behind every recommendation. Warm but professional — not pushy at all.",
+    tone: "structured, thorough, technical. Deep discovery-first. Validates prospect's logic. Explains the 'why'. Warm but not pushy. Closes with a promised post-call summary.",
     avgWords: 90, role: "AE / Demo",
     phrases: ["Just to make sure I understand correctly,", "That's actually a very good logic,", "I would definitely recommend,", "From our side,", "The idea here is that"],
-    closingStyle: "Soft close. Always ends with 'I'll follow up after the call with a short summary' and asks 'when should I expect to hear back from you?'",
-    notes: "Sofiia spends a LOT of time on discovery — she asks about email infrastructure, opt-in status, sending tool, volume per mailbox before ever pitching. She's Ukrainian/Polish, works remotely, builds personal rapport naturally. Very good at explaining cold outreach risks without scaring the prospect. Pricing is per mailbox and she sizes based on number of mailboxes they want to connect.",
+    closingStyle: "Soft close. Always promises post-call summary. Asks 'when should I expect to hear back from you?'",
+    // HubSpot stats (May 1-17): 38 closed won | $28,247 revenue | $743 avg deal size — #1 in deals, #1 in revenue
+    // Biggest: Inarigrowth ($2.2k), Starcrown Upsell ($2.25k), 1WIN ($4.7k), deeptech.build total ($2.4k), Alex Urban ($1.05k)
+    // Sofiia is the TOP performer by both volume and revenue in May. Very strong upsell book.
+    // Knowledge gap flagged in transcripts: uncertain whether Warmy replies from user's mailbox (came up in Anshuman + CloudHire calls)
+    // Attends cross-functional meetings (Marketing <> Sales <> Support monthly sync)
+    stats: { deals_may: 38, revenue_may: 28247, avg_deal_may: 743, rank_revenue: 1 },
+    coaching_notes: "#1 AE by revenue and volume in May. Main gap: product knowledge around the reply-from-user's-mailbox question. Should get a definitive product answer to close this knowledge gap.",
   },
   "jorget@warmy.io": {
     name: "Jorge Marttins", initials: "JM", color: "#ef4444",
     greeting: "Hi [Name],", closing: "Best,\nJorge",
-    tone: "clear, structured, methodical. Explains things step by step. Uses analogies and concrete examples. Calm and confident. Never oversells — lets the product speak.",
+    tone: "clear, structured, methodical. Explains step by step. Calm and confident. Never oversells. Good at technical explanations and competitor comparisons.",
     avgWords: 75, role: "AE",
     phrases: ["So basically,", "Let me share with you,", "I must say,", "Does that make sense?", "I'll send you the information over email"],
-    closingStyle: "Always ends with a concrete next step: 'I'll send you the information and we can connect in 2-3 weeks' or books a specific follow-up.",
-    notes: "Jorge ran demos for Scott Conlin (novelty lights, b2c/b2b mix, HubSpot), Pedro Silva (Agemobi), Loron Grantham (EchelonDawn), Caitlin Marco (Opal.dev). He explains the seed list concept very clearly using step-by-step logic. Good at handling 'why you vs competitors' — focuses on account manager support and 7 years of network quality. Methodical pricing presentation.",
+    closingStyle: "Ends with concrete next step. Books follow-up or sends pricing immediately. Efficient on transactional deals (3-min EchelonDawn close).",
+    // HubSpot stats (May 1-17): 18 closed won | $3,359 revenue | $187 avg deal size
+    // Biggest: Velocity ($140), Monetize Media ($350), Roger AI upsell ($1k), Full Stack ($516+$1.2k), ControlAI ($2.9k), Pacific Sotheby's ($600)
+    // Jorge handles many small new business deals + upsells. Also ran the FanBasis partner demo with Nicole (partnerships).
+    // Weekly Briefing & Training call with entire AE team + Said (Wednesdays 3pm CEST, Daniel Shnaider runs it)
+    // Seen on Marketing <> Sales <> Support monthly sync
+    stats: { deals_may: 18, revenue_may: 3359, avg_deal_may: 187, rank_revenue: 4 },
+    coaching_notes: "Low ASP ($187) — Jorge is closing many $49-$200 deals. Needs to focus on deal quality, not just volume. The ControlAI deal ($2.9k) shows he can close larger deals when engaged properly.",
   },
 };
 
