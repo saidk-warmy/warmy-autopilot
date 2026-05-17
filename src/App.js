@@ -1153,6 +1153,8 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
   const [disqualReason, setDisqualReason] = useState("");
   const [showDisqualModal, setShowDisqualModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
 
   const action = getPipelineAction(deal);
   const stageConfig = PIPELINE_STAGES[deal.stage] || PIPELINE_STAGES.meeting_scheduled;
@@ -1162,55 +1164,48 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
     critical: "#ef4444", high: "#f59e0b", medium: "#3b82f6", low: "rgba(255,255,255,0.07)", none: "rgba(255,255,255,0.07)"
   }[action.urgency];
 
+  const doUpdate = async (url, body) => {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...body, dealId: String(deal.hubspotId || "") }),
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || `HTTP ${resp.status}`);
+    return data;
+  };
+
   const handleStageChange = async (newStage, reason) => {
-    setLoading(true);
+    if (!deal.hubspotId) { setActionError("No HubSpot deal ID on this deal"); return; }
+    setLoading(true); setActionError(null); setActionSuccess(null);
     try {
-      const note = `Stage updated to ${PIPELINE_STAGES[newStage]?.label || newStage} — ${new Date().toLocaleDateString("en-GB")}${reason ? ". Reason: " + reason : ""}`;
-      const resp = await fetch("/api/hubspot-update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId: deal.hubspotId, stage: newStage, note }),
-      });
-      const data = await resp.json();
-      if (!resp.ok || data.error) throw new Error(data.error || "Update failed");
+      const note = `Stage → ${PIPELINE_STAGES[newStage]?.label || newStage} — ${new Date().toLocaleDateString("en-GB")}${reason ? ". Reason: " + reason : ""}`;
+      await doUpdate("/api/hubspot-update", { stage: newStage, note });
+      setActionSuccess(`✓ Moved to ${PIPELINE_STAGES[newStage]?.label}`);
       onStageChange(deal.id, newStage, reason);
-    } catch (e) {
-      alert("HubSpot update failed: " + e.message);
-    }
+    } catch (e) { setActionError(e.message); }
     setLoading(false);
   };
 
   const handleDay3Done = async () => {
-    setLoading(true);
+    if (!deal.hubspotId) { setActionError("No HubSpot deal ID on this deal"); return; }
+    setLoading(true); setActionError(null); setActionSuccess(null);
     try {
-      const resp = await fetch("/api/hubspot-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId: deal.hubspotId, note: `Day-3 follow-up sent — ${new Date().toLocaleDateString("en-GB")}` }),
-      });
-      const data = await resp.json();
-      if (!resp.ok || data.error) throw new Error(data.error || "Log failed");
+      await doUpdate("/api/hubspot-log", { note: `Day-3 follow-up sent — ${new Date().toLocaleDateString("en-GB")}` });
+      setActionSuccess("✓ Day-3 follow-up logged in HubSpot");
       onFollowUpDone(deal.id);
-    } catch (e) {
-      alert("HubSpot log failed: " + e.message);
-    }
+    } catch (e) { setActionError(e.message); }
     setLoading(false);
   };
 
   const handleLogActivity = async () => {
-    setLoading(true);
+    if (!deal.hubspotId) { setActionError("No HubSpot deal ID on this deal"); return; }
+    setLoading(true); setActionError(null); setActionSuccess(null);
     try {
-      const resp = await fetch("/api/hubspot-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealId: deal.hubspotId, note: `Activity logged — ${new Date().toLocaleDateString("en-GB")} — Negotiation clock reset` }),
-      });
-      const data = await resp.json();
-      if (!resp.ok || data.error) throw new Error(data.error || "Log failed");
+      await doUpdate("/api/hubspot-log", { note: `Activity logged — ${new Date().toLocaleDateString("en-GB")} — Negotiation clock reset` });
+      setActionSuccess("✓ Activity logged — clock reset");
       onLogActivity(deal.id);
-    } catch (e) {
-      alert("HubSpot log failed: " + e.message);
-    }
+    } catch (e) { setActionError(e.message); }
     setLoading(false);
   };
 
@@ -1369,8 +1364,18 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
               )}
 
               {loading && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", fontSize: 12, color: "#f59e0b", fontFamily: "'JetBrains Mono', monospace" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "10px 14px", fontSize: 12, color: "var(--warmy-orange)", fontWeight: 600 }}>
                   <span style={{ display: "inline-block", animation: "spin 0.8s linear infinite" }}>⟳</span> Updating HubSpot…
+                </div>
+              )}
+              {actionError && (
+                <div style={{ padding: "8px 12px", borderRadius: 6, background: "rgba(248,81,73,0.1)", border: "1px solid rgba(248,81,73,0.3)", fontSize: 12, color: "var(--warmy-red)", fontWeight: 500 }}>
+                  ✗ {actionError}
+                </div>
+              )}
+              {actionSuccess && (
+                <div style={{ padding: "8px 12px", borderRadius: 6, background: "rgba(63,185,80,0.1)", border: "1px solid rgba(63,185,80,0.3)", fontSize: 12, color: "var(--warmy-green)", fontWeight: 600 }}>
+                  {actionSuccess}
                 </div>
               )}
             </div>
