@@ -1688,68 +1688,6 @@ function MeetingAnalysisCard({ analysis }) {
   );
 }
 
-  return (
-    <div style={{
-      background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
-      borderRadius: 14, overflow: "hidden", marginBottom: 10,
-    }}>
-      <div onClick={() => setExpanded(e => !e)} style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-        <AEAvatar email={analysis.ae} size={36} />
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9" }}>{analysis.contact}</span>
-            <span style={{ fontSize: 12, color: "#64748b" }}>· {analysis.company}</span>
-            <Badge label={analysis.type} color={aeProfile?.color || "#64748b"} />
-          </div>
-          <span style={{ fontSize: 11, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>
-            {analysis.date} · {analysis.duration} · {aeProfile?.name}
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: scoreColor, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{analysis.score}</div>
-            <div style={{ fontSize: 9, color: "#475569", textTransform: "uppercase", letterSpacing: "0.06em" }}>score</div>
-          </div>
-          <span style={{ color: "#334155", fontSize: 14, transition: "transform 0.2s", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
-        </div>
-      </div>
-
-      {expanded && (
-        <div style={{ padding: "0 16px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          <p style={{ margin: "12px 0 14px", fontSize: 13, color: "#94a3b8", lineHeight: 1.7, borderLeft: "2px solid rgba(255,255,255,0.1)", paddingLeft: 12 }}>
-            {analysis.summary}
-          </p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div>
-              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#10b981", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", gap: 5 }}>
-                <span>✓</span> What went well
-              </p>
-              {analysis.went_well.map((item, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
-                  <span style={{ color: "#10b981", fontSize: 11, flexShrink: 0, marginTop: 2 }}>·</span>
-                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{item}</span>
-                </div>
-              ))}
-            </div>
-            <div>
-              <p style={{ margin: "0 0 8px", fontSize: 10, color: "#f59e0b", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", display: "flex", alignItems: "center", gap: 5 }}>
-                <span>△</span> Could improve
-              </p>
-              {analysis.improve.map((item, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
-                  <span style={{ color: "#f59e0b", fontSize: 11, flexShrink: 0, marginTop: 2 }}>·</span>
-                  <span style={{ fontSize: 12, color: "#64748b", lineHeight: 1.6 }}>{item}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 /* ═══════════════════════════════════════════════════════
    MAIN APP
 ═══════════════════════════════════════════════════════ */
