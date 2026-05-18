@@ -325,490 +325,536 @@ const INITIAL_TASKS = [
 ];
 
 const MEETING_ANALYSES = [
+  // Scores and coaching based on the official Warmy AE Onboarding Playbook:
+  // Framework: 1-Icebreaker(2min) 2-Discovery(8-10min) 3-Diagnosis(5min) 4-Solution/Pricing(5min) 5-Close/NextSteps(3-5min)
+  // Must-ask: business type, email type, volume, domains/mailboxes, issue duration, domain age, ESP, Google Postmaster (B2C), timeline, expectations
+  // Red flags to identify: cold from main domain, >40 emails/mailbox, >6 mailboxes/domain, 3rd party list, mixing cold+marketing, new domain+high volume
+  // Mindset: be the doctor — diagnose first, then prescribe
 
-  // ══════════════ SAID ══════════════
+  // ══════════ SAID ══════════════
   {
     id: "M001", meetingId: "1af383c9-640a-4515-8044-310c37375e6d",
     ae: "saidk@warmy.io", contact: "Max Nyirenda", company: "GoInspire",
     type: "Upsell", date: "2026-05-14", duration: "15 min",
+    framework_scores: {
+      icebreaker: 5, discovery: 4, diagnosis: 4, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Quick re-discovery — remembered all context from the day before and jumped straight to value",
-      "Identified the partnership angle immediately (GoInspire as performance partner for Warmy referrals)",
-      "Offered 15% discount tied to a testimonial — smart upsell mechanic that gets something back",
-      "Confirmed annual option ($16k/yr, 2 months free) clearly and without pressure",
-      "Said he would send the comparison email within minutes — showed responsiveness",
+      "Remembered full context from prior call — skipped re-intro and jumped straight to value (doctor who already knows the patient)",
+      "Correctly identified the partnership angle: GoInspire as a referral partner, not just a customer",
+      "Offered a testimonial-linked discount — smart mechanic that gets something back",
+      "Confirmed Amazon SES integration path clearly — shows infrastructure expertise",
+      "Annual framing was natural: $16k/yr with 2 months free",
     ],
     improve: [
-      "Didn't pin down a specific date with Sat (the CTO) — 'I'll check with Sat' is vague and creates an open-ended follow-up loop",
-      "Pricing got slightly muddled during the call — should have a clean price sheet ready",
-      "Should have proposed sending a short Loom or video for Sat to watch instead of just an email",
+      "Discovery was skipped — this is an upsell so understandable, but Said never re-confirmed GoInspire's current infrastructure or sending volume. The playbook says diagnose on every call.",
+      "No timeline confirmed with the real decision maker (Sat, the CTO). 'I'll check with Sat' is passive — Said should have offered to jump on a 3-way call",
+      "Objection handling: Max asked for a price reduction and already had the 15% discount. Said didn't use the playbook rebuttal: 'What does one missed campaign cost you?'",
+      "Close was soft — no specific date agreed for Sat's decision",
     ],
-    score: 81,
-    summary: "Solid upsell call. Said handled the price objection well by tying the discount to a testimonial. The main risk is the deal stalling with Sat (the CTO) as a gatekeeper — Said needs to make it as easy as possible for Max to get an answer quickly.",
+    score: 78,
+    playbook_verdict: "Good consultative tone but the close was left open-ended. The playbook requires leaving every call with 'something concrete scheduled' — Said left with a vague 'I'll check with Sat'.",
   },
 
-  // ══════════════ GOKHAN ══════════════
+  // ══════════ GOKHAN ══════════════
   {
     id: "M002", meetingId: "c014a5a1-ae9b-4131-a15f-691f274b6dd1",
     ae: "gokhank@warmy.io", contact: "Bill Bowden + Craig", company: "maior.ai",
     type: "Demo", date: "2026-05-14", duration: "33 min",
+    framework_scores: {
+      icebreaker: 5, discovery: 5, diagnosis: 5, solution_fit: 4, close: 4,
+    },
     went_well: [
-      "Deep discovery before pitching — learned about Apollo, HTML email issues, and team structure first",
-      "Sofiia's product demo was tight and directly addressed the deliverability problems Bill described",
-      "Framed Warmy as a long-term partner, not a tool — built strong trust",
-      "Pushed for a decision timeline and got a verbal: 'answer by tomorrow afternoon'",
-      "Annual framing came naturally — Bill brought up the yearly commitment himself",
+      "Perfect discovery execution: asked about business type (lending), email type (cold B2B via Apollo), volume, ESP, domain setup — hit every must-ask question",
+      "Diagnosed the red flag correctly: HTML emails in cold outreach — immediately positioned Warmy as the fix",
+      "Google Workspace setup confirmed — matched correct plan recommendation (Regular Warm Up, B2B Cold Outbound Segment)",
+      "Compared Warmy vs MX Tools credibly — used the 'we do more than warm-up' value prop from the playbook",
+      "Got a decision timeline commitment: 'answer by tomorrow afternoon'",
     ],
     improve: [
-      "CEO's name (Hirsh, visible in the Avoma invite) was never used — missed personalization opportunity for the follow-up",
-      "Pricing hesitation visible twice: 'let me check' slows momentum",
-      "Sofiia's demo portion ran long for a 30-min slot — should have a tighter handoff structure",
+      "Never asked about domain age — critical for B2B cold. A new domain requires longer warm-up and different expectations",
+      "Didn't confirm whether Bill is sending to business domains or consumer domains (the B2B vs B2C trap the playbook warns about)",
+      "Pricing confidence wavered twice — said 'let me check' on plan pricing. Should have the plan matrix memorised",
+      "The CEO (Hirsh) is the real decision maker — should have asked Bill to include Hirsh in the follow-up or next call",
     ],
-    score: 85,
-    summary: "Excellent team demo. Gokhan's discovery was thorough and Sofiia's product walkthrough was well-timed. The CEO (Hirsh, cc'd on the invite) is the real decision maker — the follow-up email should speak directly to Hirsh, not just Bill.",
+    score: 84,
+    playbook_verdict: "Strong discovery call — Gokhan's diagnostic instincts are excellent. Two missed must-ask questions (domain age, recipient domain type). Pricing confidence needs work.",
   },
   {
     id: "M003", meetingId: "5cb81583-90a8-465a-bde1-346e6f24556f",
     ae: "gokhank@warmy.io", contact: "Jack Butzu + Jamie Anderson", company: "KodiakHub",
     type: "Demo", date: "2026-05-13", duration: "40 min",
+    framework_scores: {
+      icebreaker: 5, discovery: 4, diagnosis: 4, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Handled complex multi-stakeholder call (GTM engineer + IT) smoothly — read the room well",
-      "Identified the infrastructure problem (5 domains not warmed) before pitching",
-      "Jamie brought up the annual commitment herself — Gokhan never had to push it",
-      "$4,500/yr offer was well received",
-      "Strong differentiation vs Instantly and Mailreach when directly compared",
+      "Discovery covered: business type (SDR team), email type (B2B cold), mailbox count (10 SDRs), ESP (Microsoft 365 + Growth Machine) — solid coverage",
+      "Identified the key red flag: never warmed up before — set expectations about the ramp-up period",
+      "Correct segment recommendation: B2B Cold Outbound, separate domain, 2-3 mailboxes/domain, 30-40 emails/day",
+      "Annual pricing framing worked — Jamie brought it up herself",
     ],
     improve: [
-      "Call ran 40 minutes — pricing could have been introduced earlier",
-      "Jack's specific question about separating rep emails from sequences wasn't fully resolved",
-      "No follow-up meeting booked with the CFO — 'end of month' without a next call is a deal killer",
+      "Never asked about domain age — KodiakHub's cold domains could be new, which affects the warm-up timeline promise",
+      "Jack's question about separating rep emails from sequences exposed a knowledge gap — should know the answer to this cold",
+      "No concrete close — 'end of month with CFO approval' with no follow-up call booked. Playbook: always leave with something concrete scheduled",
+      "Call ran 40 minutes — discovery + diagnosis could have been done in 15, leaving more time for close",
     ],
-    score: 80,
-    summary: "Strong call. The main vulnerability is CFO approval with no follow-up call booked. Jamie needs to feel accountable for a specific date. Priority action: send a one-line email asking for a 15-min call with Jamie + CFO to answer any final questions.",
+    score: 78,
+    playbook_verdict: "Good discovery but weak close. The deal is floating without a next call booked. CFO approval without an anchor date and a contact in the room is a pipeline risk.",
   },
   {
     id: "M004", meetingId: "bef34772-56f8-4c24-9554-66fb5de47382",
     ae: "gokhank@warmy.io", contact: "Dorian Lesnic", company: "Cardneto",
     type: "Demo", date: "2026-05-13", duration: "59 min",
+    framework_scores: {
+      icebreaker: 5, discovery: 5, diagnosis: 5, solution_fit: 5, close: 5,
+    },
     went_well: [
-      "Closed on the call — payment completed live",
-      "Handled competitor comparisons (Instantly x4) confidently without being dismissive",
-      "Used startup pricing angle well — $20/mailbox felt personalized and fair",
-      "Dorian said it was 'one of the smoothest sales experiences' he'd had",
-      "Gokhan shared his own discovery framework unprompted — exceptional trust builder",
+      "Full framework executed: icebreaker → discovery → diagnosis → solution → live close",
+      "Diagnosed the root cause immediately: new domain + cold sending from Day 1 = reputation damage",
+      "Used the objection rebuttal correctly when Instantly came up: 'Warmy goes further — we advise on your full infrastructure'",
+      "Closed on the call with payment — the gold standard from the playbook",
+      "Booked onboarding before hanging up — left with something concrete",
+      "Dorian called it 'the smoothest sales experience' — Gokhan embodied the 'be the expert, not the salesperson' mindset",
     ],
     improve: [
-      "59 minutes for a $100/mo deal — time allocation is a concern at scale",
-      "Instantly objection came up 4 times — should have resolved it definitively in the first instance",
-      "VPN/domain setup questions exposed a product knowledge gap in edge cases",
+      "59 minutes for a $100/mo deal — the same framework executed in 25-30 min would free up more capacity",
+      "VPN/domain setup edge case tripped him up briefly — should know the product edge cases cold",
+      "Instantly objection handled 4 times — should be resolved definitively in the first 60 seconds",
     ],
-    score: 90,
-    summary: "Exceptional close with an advocate created. The time investment is the only real concern — Gokhan's thoroughness is a strength but needs calibration against deal size.",
+    score: 91,
+    playbook_verdict: "Near-perfect execution of the Warmy framework. Doctor mindset throughout — diagnosed, prescribed, closed. Time management is the only real gap.",
   },
   {
     id: "M010", meetingId: "cf9289bb-77ad-4cc0-865a-a2acc7ae39c2",
     ae: "gokhank@warmy.io", contact: "Collin Farmer", company: "42support (MSP)",
     type: "Demo", date: "2026-05-15", duration: "27 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 3, solution_fit: 4, close: 2,
+    },
     went_well: [
-      "Immediately spotted the MSP partnership angle — Collin manages multiple client accounts",
-      "Correctly held back on retail pricing and committed to a partnership conversation",
-      "Explained seed list vs integration clearly for a technical MSP audience",
-      "Set concrete next step: email with pricing within 1.5 hours",
-      "Identified the 25-domain firm as a second opportunity for future discussion",
+      "Spotted the MSP/API Customer angle (Segment 04) quickly — understood this is a reseller, not an end user",
+      "Correctly held back on retail pricing — smart to flag partnership pricing needs manager approval",
+      "Explained seed list vs integration distinction for a technical audience",
+      "Identified the 25-domain firm as a second opportunity worth pursuing",
     ],
     improve: [
-      "Never confirmed Collin's email address or booked a follow-up call",
-      "The $4.50/mailbox estimate (retail) was shared before partnership pricing was discussed — anchored too high",
-      "25-domain firm opportunity was deferred entirely — should have at least captured contact info",
+      "Discovery was light — didn't ask what types of emails Collin's clients send, their volumes, or their domain setup. Must-ask questions skipped",
+      "Collin's clients could be B2B cold, B2B marketing, or B2C — Gokhan never found out. Different segments = different plans and pricing",
+      "No close or next step — Gokhan said 'I'll email pricing' but never confirmed when or booked a follow-up",
+      "The diagnosis step was skipped entirely — no red flags or green flags identified for Collin's client base",
     ],
-    score: 77,
-    summary: "Smart pivot to the partnership angle. Collin came in for pricing info — the follow-up email needs to land fast (Gokhan said 1.5 hours) with a clear MSP rate that makes the math work for reselling.",
+    score: 72,
+    playbook_verdict: "Discovery was too shallow for an MSP sale. Gokhan needs to understand the client's clients before pricing. The close was passive — 'I'll email you' is not a next step.",
   },
   {
     id: "M011", meetingId: "b4a4a80d-59ff-4339-a9bf-75ae967d3295",
     ae: "gokhank@warmy.io", contact: "Phil Mold", company: "That Recruitment Bloke",
     type: "Demo", date: "2026-05-15", duration: "42 min",
+    framework_scores: {
+      icebreaker: 5, discovery: 5, diagnosis: 5, solution_fit: 4, close: 5,
+    },
     went_well: [
-      "Closed on the call — Phil paid $49/mo live",
-      "Excellent rapport: pub prices in Kraków vs Manchester became a running thread that relaxed Phil completely",
-      "Identified Loxo CRM as a contributing factor to deliverability issues — showed deep diagnostic skill",
-      "Handled the cash flow objection gracefully: monthly now, annual option preserved for Month 3",
-      "Booked onboarding for Tuesday before ending the call",
-      "Used the 'weight scale' analogy naturally and it visibly landed with Phil",
+      "Textbook icebreaker — Kraków/Manchester pub prices created genuine rapport before any business talk",
+      "Full discovery: recruitment B2B cold, Loxo CRM, Microsoft 365, ~40 emails/day — all must-ask questions covered",
+      "Diagnosed the red flag correctly: Loxo was contributing to deliverability issues — proactive infrastructure diagnosis",
+      "Matched the correct segment (B2B Cold Outbound, Segment 01) and gave the right recommendations",
+      "Live close — Phil paid $49/mo during the call. Onboarding booked before hanging up",
+      "Handled the annual vs monthly objection gracefully with the 'deferred annual' option",
     ],
     improve: [
-      "42 minutes for a $49/mo deal — Gokhan is excellent but needs to tighten the close path for small deals",
-      "Phil asking for $400/yr vs $490 was a minor negotiation that Gokhan could have pre-empted by anchoring stronger on value",
-      "The Loxo insight was valuable — should have been documented in HubSpot immediately for the CSM",
+      "42 minutes for a $49/mo deal — Phil was easy to close, the call could have been 25 min",
+      "Didn't confirm Phil's sending volume beyond '40 emails/day' — should have asked: total per month?",
+      "The Loxo insight should have been flagged as a specific red flag and explained more firmly as a risk",
     ],
-    score: 88,
-    summary: "Another live close. Gokhan's ability to build rapport rapidly and translate technical concepts into plain language is exceptional. Phil is a small account but a strong candidate for a testimonial given how enthusiastic he was.",
+    score: 87,
+    playbook_verdict: "Excellent doctor-mindset call. Gokhan diagnosed and closed. The only gap is time management — this framework should run in 25-30 min for starter deals, not 42.",
   },
   {
     id: "M012", meetingId: "135fdff5-b93b-46c6-9a1f-a2c0ff5529eb",
     ae: "gokhank@warmy.io", contact: "Bryan Quandt", company: "Optimizm Solutions",
     type: "Demo", date: "2026-05-15", duration: "28 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 3, solution_fit: 3, close: 2,
+    },
     went_well: [
-      "Good rapport opening — Vienna/Kraków geography connection was natural",
-      "Correctly identified the root cause (new domain + cold outreach from Day 1) early",
-      "Educated Bryan well on the 30-40 email/day safe zone",
-      "Differentiated from Apollo's warm-up feature credibly (biggest database, dedicated expert)",
-      "Gave Bryan a clear next step: email with package details + signup link",
+      "Good icebreaker — Vienna/Kraków connection was natural",
+      "Identified the root cause: new domain + cold sending from Day 1",
+      "Correct recommendation: 30-40 emails/day max, separate domain",
+      "Differentiated from Apollo's warm-up feature with the 'largest database + dedicated expert' angle",
     ],
     improve: [
-      "Bryan said 'I'm looking at other vendors — follow up late next week.' Gokhan accepted this passively — no urgency created",
-      "No pricing anchor set during the call — Bryan went away without a number to compare",
-      "Gokhan called Bryan 'Greg' at the end of the call — small but noticeable error",
-      "Should have offered a trial or a specific reason to decide sooner",
+      "Never asked domain age — critical here since Bryan has a new domain. Should have stressed the 2-week minimum before sending",
+      "No pricing discussed on the call — Bryan left without an anchor number to evaluate",
+      "Passive close: accepted 'follow up late next week' without creating any urgency. Playbook rebuttal: 'The best time to warm up is before you start sending at scale'",
+      "Called Bryan 'Greg' at the end — basic error that undermines rapport",
+      "Diagnosis of red flags was verbal but not pointed — should have said 'this is exactly what's causing your issue' more directly",
     ],
-    score: 72,
-    summary: "Solid educational demo but a passive close. Bryan is clearly evaluating multiple vendors and Gokhan let him leave without any urgency or competitive differentiation beyond the expert. The follow-up email is critical — needs a reason to choose Warmy now.",
+    score: 68,
+    playbook_verdict: "Weak close on a multi-vendor evaluation. Bryan is comparing options and Gokhan gave him no reason to choose Warmy now. The playbook urgency rebuttal was never used.",
   },
   {
     id: "M013", meetingId: "1e4d7a44-7d54-4399-b252-7a8f8807b7c2",
-    ae: "gokhank@warmy.io", contact: "Gurdev Kalsi", company: "Affiliate Marketer (India)",
+    ae: "gokhank@warmy.io", contact: "Gurdev Kalsi", company: "Affiliate Marketer",
     type: "Proposal", date: "2026-05-15", duration: "37 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 3, diagnosis: 3, solution_fit: 2, close: 2,
+    },
     went_well: [
-      "Patient and educational throughout — never made Gurdev feel embarrassed about his basic questions",
-      "Correctly identified that Getresponse (ESP) requires a seed list solution, not mailbox integration",
-      "Did the volume math carefully (1,400 emails/day = 2,500+ seed contacts needed)",
-      "Offered to discuss with manager to find India-appropriate pricing",
-      "Empathetic to the currency/budget constraint without dismissing the prospect",
+      "Patient and educational — never made Gurdev feel judged for his basic questions",
+      "Correctly identified Getresponse as an ESP that needs seedlist approach (edge case — ESP doesn't integrate)",
+      "Did the volume math carefully: 1,400 emails/day = high volume seedlist needed",
+      "Empathetic to the India/budget constraint without being dismissive",
     ],
     improve: [
-      "Gurdev's budget of $100-250 vs Gokhan's $750 quote is a 3-5x gap — should have qualified budget earlier to save both sides' time",
-      "The call ran 37 minutes without reaching a conclusion — a clearer budget qualification at minute 5 would have reshaped the conversation",
-      "Gokhan offered to email pricing options on Monday but didn't lock in a specific follow-up call time",
-      "The deal economics are very challenging — Gurdev is in India, small budget, high volume need. Risk of wasted follow-up cycles.",
+      "Budget qualification skipped entirely — Gurdev's $100-250 budget vs $750 quote is a 3-5x gap. The playbook says diagnose before prescribing — budget is part of the diagnosis",
+      "Didn't ask how long Gurdev has had issues — this is a must-ask question",
+      "Never asked about recipient domain type — affiliate marketing could be B2C (consumer inboxes) which changes the entire warm-up strategy",
+      "Solution fit was wrong — prescribed a plan Gurdev can't afford. Should have qualified budget in the first 5 minutes",
+      "37 minutes with no resolution — should have identified the budget mismatch at minute 5 and either found an alternative or gracefully disqualified",
     ],
-    score: 65,
-    summary: "Good product explanation and cultural sensitivity, but the budget gap was not addressed early enough. Gurdev is a challenging prospect — his $100-250 budget vs the $350-750 required price is a fundamental mismatch. Gokhan should qualify harder on budget in the first 5 minutes for ESP/seed list prospects.",
+    score: 58,
+    playbook_verdict: "Budget not qualified early enough — cardinal discovery error. The playbook's must-ask questions exist precisely to prevent 37-minute calls that go nowhere. Gurdev is not a viable prospect at the prices he described.",
   },
   {
     id: "M014", meetingId: "78cc9f73-f52e-42f6-83dd-5dad34bcbeca",
-    ae: "gokhank@warmy.io", contact: "Jordan Tate (via Paul)", company: "Conduyt (CRM SaaS)",
+    ae: "gokhank@warmy.io", contact: "Jordan Tate (via Paul)", company: "Conduyt",
     type: "Demo", date: "2026-05-14", duration: "13 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 3, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Paul (the IT consultant) was already a Warmy customer — this was a warm referral, Gokhan handled it perfectly",
-      "Quickly understood the 3-domain structure (conduit.com, .email, .app) and gave relevant advice",
-      "Correctly prioritized conduit.email as the marketing domain to focus on",
-      "Pricing was clear: $49/mailbox, $245/mo for 5, $2,450/yr",
-      "Offered to email both Paul and Jordan together — efficient multi-stakeholder close",
+      "Handled warm referral efficiently — Paul is already a Warmy customer, Gokhan leveraged this well",
+      "Correctly identified 3-domain structure and recommended which domain to prioritise",
+      "Pricing was clear and confident: $49/mailbox, $245/mo for 5",
+      "Correct segment identification: B2B SaaS cold outbound",
     ],
     improve: [
-      "Never confirmed the number of mailboxes per domain — said 'about 5' without verifying",
-      "Should have booked a follow-up call directly rather than waiting for Paul to speak with Jordan",
-      "The annual option ($2,450) was presented without a specific deadline — no urgency",
+      "Jordan (the decision maker) wasn't on the call — Gokhan never confirmed Jordan's email or offered to send information directly to him",
+      "Domain age not asked — conduit.email could be a new domain needing full warm-up ramp",
+      "No next step with Jordan directly — the deal depends on Paul forwarding information, which is a weak link",
+      "Annual option presented without urgency framing — playbook says use the 'building before problems appear' angle",
     ],
-    score: 80,
-    summary: "Efficient warm referral handling. The deal is viable but sits on Jordan (the decision maker) who wasn't present on the call. The follow-up email to both Paul and Jordan is critical — and should include a specific call-to-action for Jordan to confirm mailbox count and sign up.",
+    score: 76,
+    playbook_verdict: "Efficient warm referral handling but the decision maker wasn't present. Gokhan should have either waited to present to Jordan directly or got Jordan's contact to follow up with independently.",
   },
 
-  // ══════════════ FELIPE ══════════════
+  // ══════════ FELIPE ══════════════
   {
     id: "M005", meetingId: "ea7a1cb3-b09f-4af0-8411-af544e00483c",
     ae: "felipev@warmy.io", contact: "Muhammad Hussnain", company: "CodingCops",
     type: "Demo", date: "2026-05-15", duration: "31 min",
+    framework_scores: {
+      icebreaker: 5, discovery: 4, diagnosis: 3, solution_fit: 3, close: 3,
+    },
     went_well: [
-      "Built personal rapport immediately — Pakistan/Brazil/travel banter put Muhammad completely at ease",
-      "Identified the key differentiator fast: Muhammad wants custom templates, not generic warm-up (Instantly weakness)",
+      "Excellent icebreaker — Pakistan/Brazil travel chat fully warmed up Muhammad before business talk",
+      "Identified the right segment: B2B Cold Outbound (Segment 01), 80 domains, 1 account each",
+      "Spotted the key differentiator: custom templates vs Instantly's generic warm-up",
+      "Volume math was correct: confirmed they're within safe range for their setup",
       "Found Warmy via ChatGPT — Felipe turned this into social proof naturally",
-      "Dropped from $49 → $10 → $5/mailbox in a natural negotiation that felt like a win for Muhammad",
-      "Set a hard Tuesday deadline to create urgency without pressure",
     ],
     improve: [
-      "Pricing dropped too fast with minimal pushback — went $49 to $5 in one call. Could have held at $10-15 for 100 accounts",
-      "No concrete next step for Muhammad's head of sales approval — who is this person, when will they decide?",
-      "Felipe promised to send the proposal 'within minutes' — must follow through immediately",
+      "Diagnosis step was rushed — Felipe never pointed out any red flags in Muhammad's setup. 80 domains × 2,500 emails/day is high volume. Are they sending from main domains? What's the domain age? These red flags were never explored",
+      "The playbook says diagnose before prescribing — Felipe jumped to pricing too fast",
+      "Price dropped from $49 → $5/mailbox in one call with no resistance. That's a 90% discount. The 'too expensive' objection rebuttal ('what does one missed campaign cost you?') was never used",
+      "No confirmed next step — 'offer valid until Tuesday' without confirming the head of sales name or booking a call is soft",
     ],
-    score: 79,
-    summary: "Felipe's warmth and rapport-building are class-leading. Muhammad clearly liked him. The pricing strategy is the main concern — $5/mailbox for 100 accounts when the site price is $49 is a 90% discount. The proposal must land within 30 minutes of the call ending.",
+    score: 74,
+    playbook_verdict: "Strong rapport, weak diagnosis. Felipe is selling before diagnosing — the playbook says 'understand the full infrastructure before offering a solution.' He also needs price discipline.",
   },
   {
     id: "M006", meetingId: "a6402499-ea80-488a-8d8c-5e5c775617a2",
     ae: "felipev@warmy.io", contact: "Aleksandr Grebenkov", company: "GoToGrow.me",
     type: "Demo", date: "2026-05-14", duration: "26 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 3, solution_fit: 5, close: 4,
+    },
     went_well: [
-      "Spotted the partnership/API angle within the first 2 minutes",
-      "Correctly identified GoToGrow as a platform customer, not just a user — higher lifetime value",
-      "Mentioned the 25% rev share program at exactly the right moment",
-      "Kept the trial low-commitment: 'test it, then we can activate the discount'",
-      "Aleksdr said 'we are ready, just send the link' — strong closing signal Felipe handled well",
+      "Identified Segment 04 (API Customer) immediately — GoToGrow provides mailboxes and needs a warm-up API partner",
+      "Correctly spotted the partnership/rev share angle within the first 2 minutes",
+      "Trial approach was right: low-commitment entry, then upsell to partnership pricing",
+      "Aleksdr said 'we are ready, just send the link' — Felipe got to a clear next step",
+      "Connected the CTO to the API setup process proactively",
     ],
     improve: [
-      "July-August public beta date (major scale inflection point) wasn't confirmed for pipeline forecasting",
-      "Partnership handoff was vague — '25% recurring' mentioned but no formal process established",
-      "Exact mailbox count for now vs July not confirmed — makes proposal sizing difficult",
+      "Discovery on end-user infrastructure was skipped — GoToGrow's clients are the actual senders. What segments do they serve? What volumes? This shapes the partnership pricing entirely",
+      "The playbook says diagnose the full infrastructure — Felipe diagnosed the surface but not the underlying client base",
+      "Partnership handoff was vague — '25% recurring' was mentioned but no formal process was set",
+      "July-August scale-up date not confirmed for forecasting",
     ],
-    score: 84,
-    summary: "Smart deal shaping. Felipe correctly identified this as a partnership opportunity, not just a customer. The risk is that without a formal partnership process, Aleksdr may evaluate Mailbridge/Trulyinbox in the meantime. This needs to move to the partnership manager quickly.",
+    score: 81,
+    playbook_verdict: "Smart segment recognition (API Customer). The gap is discovery on GoToGrow's end-user base — different client types need different warm-up plans, which affects how the API integration should be scoped.",
   },
 
-  // ══════════════ JORGE ══════════════
+  // ══════════ JORGE ══════════════
   {
     id: "M007", meetingId: "456904da-ebca-4a1f-9bb6-5cacb7c79f9e",
     ae: "jorget@warmy.io", contact: "Scott Conlin", company: "Novelty Lights",
     type: "Demo", date: "2026-05-15", duration: "27 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 4, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Immediately understood the dual use case (b2c decorative + b2b commercial) and tailored the explanation",
-      "Explained seed list mechanics step-by-step — Scott kept saying 'Oh, okay' — it clicked",
-      "Proactively confirmed US-based seed list matches their audience without being asked",
-      "Got a soft commitment: 'I'll definitely reach out next week either way'",
-      "Pricing was clear and fair — Scott said 'good ROI if we bump 10%' and 'low hurdle to implement'",
+      "Correct segment identification: B2B Marketing/Newsletter (Segment 02) — retail b2c list + commercial b2b",
+      "Diagnosis was sharp: mixed cold+marketing on same domain is a red flag — Jorge flagged it correctly",
+      "Recommended the right solution: separate the lists, use seed list for the marketing domain",
+      "Confirmed US-based seed list matches their market proactively — shows infrastructure expertise",
+      "Scott said 'low hurdle to implement' and 'good ROI if we bump 10%' — solution fit landed well",
     ],
     improve: [
-      "Jorge took too long to get to pricing — Scott had to ask. Should introduce pricing earlier after discovery",
-      "Seasonal angle not used: Oct-Dec is their peak — 'if you start warming now, you'll be ready for Christmas campaigns' would have created urgency",
-      "No follow-up meeting booked — 'next week' is vague without a calendar invite",
+      "Never asked about domain age — critical for a seasonal business. Their main domain could be aged and trusted",
+      "Never asked about Scott's current sending tool in detail — 'we use HubSpot' was accepted without follow-up on DKIM/SPF setup",
+      "Urgency completely missed: Oct-Dec is their peak season. Playbook close: 'The best time to warm up is before you start sending at scale' — this was a perfect setup and Jorge never used it",
+      "Close was passive: accepted 'I'll reach out next week' without booking a specific follow-up",
     ],
-    score: 83,
-    summary: "Jorge's clarity of explanation is excellent. Scott left fully understanding the product. The seasonal urgency angle (Oct-Dec peak season) was completely missed — this is a strong natural reason to start now. The follow-up should lead with that.",
+    score: 80,
+    playbook_verdict: "Good diagnostic call. The seasonal urgency angle ('Christmas campaigns are 4 months away') was perfectly set up and completely unused. This is the one objection rebuttal that could have closed Scott on the call.",
   },
   {
     id: "M008", meetingId: "32bb06bf-be65-45d4-9ace-308d3b8e138f",
     ae: "jorget@warmy.io", contact: "Loron Grantham + Jake Vandersterren", company: "EchelonDawn",
     type: "Demo", date: "2026-05-14", duration: "3 min",
+    framework_scores: {
+      icebreaker: 3, discovery: 2, diagnosis: 2, solution_fit: 5, close: 5,
+    },
     went_well: [
-      "Payment completed live in under 3 minutes — efficient transactional close",
-      "Let Jake (the reseller) drive — correctly identified who the real operator was",
-      "Jake said 'you'll hear from me again' — repeat referral source identified",
+      "Payment completed in under 3 minutes — perfect transactional execution",
+      "Jake is a repeat reseller (Segment 04 — API/partner) — Jorge correctly let Jake drive",
+      "Jake said 'you'll hear from me again' — referral source identified and relationship maintained",
     ],
     improve: [
-      "Jake's company/email wasn't captured for the partner program",
-      "No onboarding confirmation sent during the call — should have sent the link live",
+      "No discovery at all — for a 3-min transactional call this is acceptable, but Jorge should have confirmed what Loron actually needs the mailbox for",
+      "Jake's company and contact details not captured for the formal partner program",
+      "No onboarding instructions shared live — should have sent the link during the call",
     ],
-    score: 95,
-    summary: "Perfect transactional execution. Jake Vandersterren is a valuable repeat referral source — should be enrolled in the partner program immediately.",
+    score: 88,
+    playbook_verdict: "Correct call type recognition — this was a transactional reseller close, not a discovery call. Jorge executed it perfectly. Jake should be formally enrolled in the partner program.",
   },
   {
     id: "M015", meetingId: "96800305-c6fb-4a93-8167-57dfdaa1a603",
     ae: "jorget@warmy.io", contact: "Caitlin Marco", company: "Opal.dev",
     type: "Demo", date: "2026-05-15", duration: "29 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 5, diagnosis: 5, solution_fit: 5, close: 5,
+    },
     went_well: [
-      "Excellent discovery — identified the shared Google IP problem and 3% bounce rate immediately",
-      "Caitlin came in with a specific requirements list (email validation, dedicated IP, IP warming) and Jorge matched each one",
-      "Offered the SMTP server option (dedicated IP through Warmy) which was exactly what Caitlin needed",
-      "Caitlin said 'Oh my gosh, I'm so excited' — strong buying signal Jorge handled with confidence",
-      "Pricing discounted clearly: $189 → $120/mailbox, $360 total for 3 BDRs",
-      "Monday 2PM follow-up call booked on the call",
+      "Discovery was exceptional — Caitlin came in with a specific requirements list and Jorge matched each one: email validation, dedicated IP, SMTP server, IP warming",
+      "Diagnosed the red flag immediately: shared Google IP = deliverability contamination. Pointed it out directly ('let me tell you why you're having this issue')",
+      "Correct solution fit: SMTP server + dedicated IP — exactly Segment 03 handling (B2B mass sender needing SMTP as last resort)",
+      "Caitlin said 'Oh my gosh I'm so excited' — the doctor diagnosis approach created genuine enthusiasm",
+      "Monday 2PM follow-up call booked on the call — playbook close executed perfectly",
+      "Pricing was confident and clear: $360 for 3 BDR mailboxes",
     ],
     improve: [
-      "Stutter on 'business plan or even premium' showed slight uncertainty on plan selection — should have a decision framework ready",
-      "Didn't ask about the contract end date with Nooks (they're locked in) — understanding the timeline helps with urgency",
-      "3% bounce rate is high — could have sold the email validation tool harder as a quick win",
+      "Slight hesitation on Business vs Premium plan — should have a decision tree ready for which plan to recommend based on volume",
+      "Never asked about contract end date with current provider (Nooks) — important for timeline and urgency",
+      "3% bounce rate was mentioned — could have sold the email validation tool harder as an immediate win",
     ],
-    score: 89,
-    summary: "Outstanding demo. Caitlin had a precise technical requirement and Jorge matched every point. The Monday follow-up call is already booked. HubSpot shows 90% close probability — this is the highest priority deal on Jorge's pipeline.",
+    score: 92,
+    playbook_verdict: "Near-perfect Warmy framework execution. Jorge was the doctor: he diagnosed the shared IP problem, explained the mechanism, and prescribed the exact solution. This is the benchmark call for the team.",
   },
   {
     id: "M016", meetingId: "ce123b34-77ea-4c57-bf65-8407f051728d",
     ae: "jorget@warmy.io", contact: "Pedro Silva", company: "Agemobi",
     type: "Demo", date: "2026-05-14", duration: "18 min",
+    framework_scores: {
+      icebreaker: 3, discovery: 2, diagnosis: 2, solution_fit: 2, close: 3,
+    },
     went_well: [
-      "Clean, efficient demo — 18 minutes is lean for Jorge",
+      "Efficient 18-minute call",
       "Next step agreed on the call",
-      "Jorge ran solo confidently",
     ],
     improve: [
-      "HubSpot shows $0 deal amount — pricing was never confirmed on the call",
-      "Very little context available from the transcript — unclear what Agemobi's specific pain point was",
-      "Need to send a clear pricing proposal as the first follow-up action",
+      "HubSpot shows $0 — pricing was never discussed. The solution_fit and pricing step was skipped entirely",
+      "Very limited discovery data available — unclear what Agemobi's email setup, volume, or pain point is",
+      "No segment identified from available transcript — Jorge didn't run the must-ask questions",
+      "The diagnosis step appears to have been skipped — no red flags or green flags identified",
     ],
-    score: 68,
-    summary: "Brief call with limited data. HubSpot shows $0 — this is a data quality issue. The follow-up email must include clear pricing based on their specific use case.",
+    score: 55,
+    playbook_verdict: "Insufficient data to coach on fully, but the $0 HubSpot deal and thin transcript suggest the discovery + diagnosis + solution framework was not followed. This call needs a replay in Avoma.",
   },
   {
     id: "M017", meetingId: "fe3ebe6a-fd21-44be-ae69-2083847130d2",
-    ae: "jorget@warmy.io", contact: "Bryan Bovey", company: "Individual (human rights advocate)",
+    ae: "jorget@warmy.io", contact: "Bryan Bovey", company: "Individual",
     type: "Demo", date: "2026-05-14", duration: "32 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 3, diagnosis: 3, solution_fit: 3, close: 3,
+    },
     went_well: [
-      "Empathetic and patient — Bryan's use case was unusual (human rights advocacy, not commercial) and Jorge handled it respectfully",
-      "Correctly identified the core problem: invalid email addresses from ChatGPT-generated lists",
-      "Explained email validation tool as the immediate solution",
-      "Directed Bryan to the free trial — right call for a low-budget individual",
+      "Empathetic handling of an unusual use case (human rights advocacy, non-commercial)",
+      "Correctly identified the root cause: invalid emails from ChatGPT-generated lists",
+      "Recommended the email validation tool as the immediate solution — correct playbook edge case handling",
+      "Directed Bryan to the free trial — right call for a zero-budget prospect",
     ],
     improve: [
-      "Bryan is not a viable commercial prospect — the call should have been qualified out faster",
-      "Significant technical issues (connection dropping, phone switch) disrupted flow",
-      "Jorge spent 32 minutes on someone who explicitly said they have no budget",
+      "Budget qualification skipped — Bryan explicitly mentioned no budget early in the call. Jorge should have gracefully disqualified within the first 5 minutes",
+      "32 minutes on a zero-revenue prospect is a time management failure",
+      "The discovery revealed immediately this is not a commercial prospect — the playbook's timeline and expectations questions would have surfaced this in the first 3 minutes",
     ],
-    score: 58,
-    summary: "Jorge was kind and helpful but this was not a commercial opportunity. The free trial suggestion was the right call. Time management: 30+ minutes on a zero-budget individual is a calibration issue — Jorge should qualify intent and budget in the first 3 minutes.",
+    score: 55,
+    playbook_verdict: "Jorge's empathy is an asset but the 'timeline' and 'expectations' must-ask questions exist precisely to filter non-viable prospects early. 32 minutes on a zero-budget individual is avoidable.",
   },
   {
     id: "M018", meetingId: "6c3ba678-c747-4ec1-9f9c-f13d4f0ea5ef",
-    ae: "jorget@warmy.io", contact: "Jimmy Hendricks + Andy", company: "WSI World (digital marketing)",
+    ae: "jorget@warmy.io", contact: "Jimmy Hendricks + Andy", company: "WSI World",
     type: "Demo", date: "2026-05-14", duration: "36 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 3, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Handled a two-person call (Jimmy the closer + Andy the operator) well — adapted his explanation for both",
-      "Correctly sized their volume (under 1k/month) and confirmed they were within the safe zone",
-      "Answered the AI question about engagement simulation clearly and accurately",
-      "Andy's SDR background meant Jorge could speak more technically — he adapted well",
-      "Clear pricing: $49/mo starter, suggested 7-day trial",
+      "Handled two-persona call well — read the room (Jimmy = closer, Andy = operator)",
+      "Correctly sized their volume and confirmed they're within the safe zone",
+      "Segment 02 (B2B Marketing) correctly identified — newsletters + some cold",
+      "Clear pricing: $49/mo starter, 7-day trial recommended",
     ],
     improve: [
-      "Jimmy and Andy left the call to 'have a conversation' — Jorge accepted this without booking a follow-up",
-      "The seasonal Atlanta/Austin market angle (55,000 businesses) was an opening for a bigger deal — Jorge didn't explore it",
-      "Andy's question about filtering spam-triggered opens vs real opens was sophisticated — Jorge's answer was vague",
+      "Andy's sophisticated question about filtering spam-triggered opens vs real opens was answered vaguely — should know this answer cold",
+      "Jimmy and Andy left to 'have a conversation' without a follow-up call booked — playbook close not executed",
+      "The Atlanta/Austin market angle (55k businesses) was an opening for a much larger deal — Jorge never explored their full volume ambition",
+      "Never asked about domain age or how long they've had deliverability issues",
     ],
-    score: 76,
-    summary: "Good call with an interesting two-person dynamic. Jimmy is the relationship closer, Andy handles execution. The lack of a booked follow-up is the main gap. The email should be sent to both with a specific call to action for Andy to start the trial.",
+    score: 72,
+    playbook_verdict: "Solid discovery but passive close. The 55,000 business market comment was a strong signal of ambition — Jorge should have used this to size a larger solution rather than anchoring on the $49 starter plan.",
   },
   {
     id: "M019", meetingId: "9fc64ee8-9ec5-47e0-8f44-75e1716a02b4",
     ae: "jorget@warmy.io", contact: "Christina + Noor + Cam + Tony", company: "FanBasis",
-    type: "Demo", date: "2026-05-15", duration: "21 min",
+    type: "Partner Demo", date: "2026-05-15", duration: "21 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 3, diagnosis: 2, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Nicole (partnerships) ran the intro perfectly, setting up Jorge as the expert",
-      "Jorge handled the large group (5 people) confidently without losing control of the room",
-      "Referral agreement was already signed — Jorge correctly positioned this as a partner enablement session",
-      "Answered the ICP question well: b2b agencies, SaaS, real estate, marketing agencies",
-      "25% recurring rev share was confirmed clearly — Tony's follow-up question was answered by Nicole smoothly",
+      "Handled 5-person multi-stakeholder call confidently",
+      "Referral agreement context well understood — positioned correctly as partner enablement",
+      "25% rev share confirmed clearly for Tony's question",
+      "ICP explained clearly: B2B agencies, SaaS, real estate, marketing agencies",
     ],
     improve: [
-      "The session was more about partnership enablement than a demo — Jorge could have been more prescriptive about which FanBasis clients to target first",
-      "No specific referral target was agreed — the call ended without a concrete 'send us X type of client' commitment",
-      "Jorge's average deal size ($200-300) was shared openly — could anchor expectations too low",
+      "This was a partner session, not a discovery call — but Jorge never asked FanBasis about their own clients' email setups. Understanding the client base would make him more helpful as a resource",
+      "No specific referral pipeline agreed — call ended without 'send us X type of client by Y date'",
+      "Discovery questions were skipped entirely — acceptable for a partner session but Jorge missed an opportunity to educate FanBasis on what makes a good Warmy referral",
     ],
-    score: 75,
-    summary: "Good partner session. FanBasis has a large client base of marketing businesses which is exactly Warmy's ICP. The main action item is to get FanBasis sending actual referrals — the partnership agreement is signed but no specific pipeline action was set.",
+    score: 72,
+    playbook_verdict: "Good partner relationship management. The gap is not using the discovery framework to educate FanBasis on what a qualified Warmy referral looks like — this is what will drive actual pipeline from the partnership.",
   },
 
-  // ══════════════ SOFIIA ══════════════
+  // ══════════ SOFIIA ══════════════
   {
     id: "M009", meetingId: "52a69708-909b-436c-bbe3-e2dd24ef61d1",
     ae: "sofiiar@warmy.io", contact: "Mat Sykes + Agatha Pope", company: "Recolution Group",
     type: "Demo", date: "2026-05-15", duration: "54 min",
+    framework_scores: {
+      icebreaker: 5, discovery: 5, diagnosis: 5, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Exceptional discovery — asked about opt-in status, Bullhorn architecture, and domain separation strategy before pitching",
-      "Validated Mat's domain separation logic (yoke-talent vs main domain) — immediate trust builder",
-      "Explained cold vs warm email risk without scaring him",
-      "Correctly identified Bullhorn email authentication goes via MS365 mailboxes",
-      "Gave concrete infrastructure advice: separate marketing (Sendgrid, high vol) from cold (40-50/day/mailbox)",
+      "Textbook discovery: asked about business type (recruitment), email type (cold + warm mix), volume (~5k/week), domains, ESP (Bullhorn + MS365), issues — every must-ask question covered",
+      "Correctly identified the domain separation strategy as a green flag and validated it — built immediate trust",
+      "Diagnosed the Bullhorn architecture correctly: emails authenticated via MS365 — shows deep infrastructure knowledge",
+      "Correctly identified the segment: B2B Cold Outbound (Segment 01) for the cold mailboxes, B2B Marketing (Segment 02) for the newsletter list",
+      "Gave concrete playbook-aligned recommendations: separate cold from marketing, 40-50 emails/day/mailbox, seed list for the Sendgrid volume",
     ],
     improve: [
-      "54 minutes is too long — could have been 35-40 without losing any value",
-      "Pricing was presented at the very end after a long call — Mat had to ask. Should anchor earlier",
-      "Trial explanation created a slight mismatch — Mat seemed surprised the 7-day trial wouldn't show improvements",
+      "Call ran 54 minutes — the framework should run in 30-35 min. Discovery was thorough but too verbose",
+      "Pricing introduced only at the end after a long call — Mat had to ask. Solution fit + pricing is Step 4, not Step 5",
+      "Close was soft: 'Mat said 2 weeks' — Sofiia accepted this without using the urgency rebuttal. They have campaigns being sent from unwarmed domains right now — that's a live problem",
+      "The post-call summary she promised must be sent immediately — this is how the soft close becomes a real close",
     ],
-    score: 88,
-    summary: "Sofiia's best strength on display: making technical prospects feel deeply understood. Mat left the call trusting her expertise. The post-call summary email she promised is critical — Mat said 2 weeks to decide but a great email could accelerate that.",
+    score: 85,
+    playbook_verdict: "Best discovery call on the team — Sofiia's diagnostic depth is exceptional. She IS the doctor. The gaps are call length and close urgency. The summary email is critical.",
   },
   {
     id: "M020", meetingId: "09e13571-e4c5-42b9-b66f-2f21794d5eac",
-    ae: "sofiiar@warmy.io", contact: "Raven Reichl", company: "Individual B2C sender",
+    ae: "sofiiar@warmy.io", contact: "Raven Reichl", company: "Individual B2C",
     type: "Proposal", date: "2026-05-15", duration: "25 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 5, solution_fit: 4, close: 5,
+    },
     went_well: [
-      "Closed on the call — Raven said 'send me the payment link and let's get started'",
-      "Correctly explained subdomain vs main domain reputation impact",
-      "Google Postmaster metrics education was proactive and valuable",
-      "Negotiated clearly: $459 → $400 → $389 → final $350",
-      "Ran the deliverability test live on the call — showed a 23% spam rate in real time",
-      "Explained the GHL (GoHighLevel) SMTP integration correctly and precisely",
+      "Ran the deliverability test live — 23% spam rate shown in real time. This is the doctor showing the X-ray",
+      "Correctly identified the segment: B2C Bulk Sender (Segment 05) — 100k/month sending to consumer inboxes",
+      "Applied the correct warm-up ratio: single opt-in = 1:5 ratio (playbook B2C warm-up strategy)",
+      "Correctly explained GPM (Google Postmaster) — B2C must-ask, Sofiia covered it",
+      "Live close — Raven said 'send me the payment link, let's start'",
+      "Correctly handled the GHL (GoHighLevel) SMTP integration — edge case knowledge",
     ],
     improve: [
-      "Pricing negotiation went through 4 rounds — should anchor the first offer lower to reduce rounds",
-      "Raven's 100k/month sending volume with a B2C list is a significant deliverability risk — Sofiia should have flagged the list quality issue more prominently",
-      "Took time to confirm IMAP details — slight uncertainty on a technical feature undermined confidence briefly",
+      "Pricing negotiated through 4 rounds ($459 → $400 → $389 → $350) — should anchor lower initially to avoid so many rounds",
+      "Raven's 100k/month to a B2C list is high-risk — Sofiia should have flagged the list quality issue more prominently as a red flag before committing to results",
+      "Brief uncertainty on IMAP details — should be confident on this product feature",
     ],
-    score: 86,
-    summary: "Live close with a B2C sender. Sofiia's technical depth shone — she correctly identified the GoHighLevel integration requirement and ran the deliverability test live. The onboarding needs to include a list quality review before Raven starts sending high volumes.",
+    score: 88,
+    playbook_verdict: "Strong B2C call. Showing the live deliverability test is exactly the 'doctor showing the X-ray' behaviour the playbook describes. Live close is the result of the diagnosis creating urgency.",
   },
   {
     id: "M021", meetingId: "5c4f9e1d-221b-4dfa-86a2-725b9eff276b",
     ae: "sofiiar@warmy.io", contact: "Anshuman Gupta + Ridhima", company: "Juno Innovation Labs",
     type: "Demo", date: "2026-05-15", duration: "18 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 4, solution_fit: 4, close: 3,
+    },
     went_well: [
-      "Immediately validated Anshuman's infrastructure (3 domains × 5 mailboxes) as industry best practice — built confidence from the start",
-      "Explained the difference between automated warm-up and seed list clearly and accurately",
-      "Handled the Instantly comparison head-on with specific differentiators (database size, AI quality, expert support)",
-      "Pricing was transparent: $29/mailbox × 15 = $435/mo, or $31 × 5 if starting smaller",
-      "Explained the dedicated expert + Slack channel included at $400+/mo — strong value framing",
+      "Immediately validated Anshuman's infrastructure (3 domains × 5 mailboxes) as industry best practice — built confidence",
+      "Correct segment identification: B2B Cold Outbound (Segment 01)",
+      "Handled the Instantly comparison confidently using the playbook rebuttal: 'Warmy goes further — we advise on full infrastructure'",
+      "Pricing was transparent and confident: $29 × 15 = $435/mo",
     ],
     improve: [
-      "Hesitated on whether Warmy replies from the user's mailbox — admitted uncertainty on a basic feature question",
-      "18 minutes is short — Anshuman said 'give me about a week' which suggests he wasn't fully sold",
-      "Should have pushed for a decision by end of week rather than 'about a week'",
+      "Knowledge gap: hesitated when asked whether Warmy replies from the user's mailbox — this is a basic product question that Sofiia should know cold",
+      "Never asked about domain age — critical for B2B cold setup",
+      "Never asked how long Anshuman has had deliverability issues — must-ask question skipped",
+      "Close was soft: accepted 'about a week' without urgency. Should have asked: 'When are your next campaigns launching?' to create natural urgency",
     ],
-    score: 82,
-    summary: "Good efficient demo with strong product knowledge. The Instantly comparison was handled particularly well. Anshuman's one-week timeline is soft — a strong follow-up email with a specific question about their campaign launch date would create natural urgency.",
+    score: 79,
+    playbook_verdict: "Good framework but two must-ask questions skipped (domain age, issue duration). The product knowledge gap on the reply-from-mailbox question needs to be resolved — this is appearing in multiple Sofiia calls.",
   },
   {
     id: "M022", meetingId: "f3357285-4afe-4011-a136-cdb646eef9ec",
-    ae: "sofiiar@warmy.io", contact: "Ayesha Mahera + Sabreena Shafi", company: "CloudHire.ai",
+    ae: "sofiiar@warmy.io", contact: "Ayesha Mahera + Sabreena", company: "CloudHire.ai",
     type: "Proposal", date: "2026-05-15", duration: "29 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 4, solution_fit: 4, close: 4,
+    },
     went_well: [
-      "Ayesha was already familiar with the product — Sofiia got right to the technical clarification questions",
-      "Correctly explained the IMAP requirement for replies — precise and accurate",
-      "Two-domain pricing negotiation was clear: $291 × 2 = $582 → offered $444 for both",
-      "Ayesha confirmed management approval was underway during the call",
-      "Offered to send the payment link immediately after the call",
+      "Correct segment: B2B Cold Outbound (Segment 01) — AI hiring platform sending cold outreach",
+      "IMAP requirement explained correctly and precisely — good technical depth",
+      "Two-domain pricing was clear and well-structured",
+      "Ayesha confirmed management approval was already underway — strong buying signal Sofiia capitalised on",
+      "Payment link sent immediately after the call",
     ],
     improve: [
-      "Sofiia wasn't sure if the system replies from the user's mailbox — same uncertainty as in the Anshuman call. This is a recurring knowledge gap that needs to be resolved",
-      "The clicks vs no-clicks discussion was slightly confusing — Ayesha seemed unsure about bot traffic concern",
-      "Should have confirmed the number of senders per domain more explicitly",
+      "Same reply-from-mailbox uncertainty as in the Anshuman call — this is now a confirmed recurring knowledge gap across multiple calls",
+      "Bot traffic / click tracking discussion was confusing — Sofiia seemed unsure about the clicks vs no-clicks recommendation for B2B cold",
+      "Domain age not confirmed — new domains need different warm-up expectations",
     ],
     score: 80,
-    summary: "Strong proposal call with a warm prospect. The recurring uncertainty about whether Warmy replies from the user's mailbox is appearing across multiple calls — Sofiia needs a definitive answer to this question to avoid undermining confidence.",
+    playbook_verdict: "Solid proposal call. The reply-from-mailbox question has now appeared in 2 separate calls this week. This must be clarified with the product team and communicated to Sofiia as an urgent coaching action.",
   },
   {
     id: "M023", meetingId: "ca65b2d4-fbf9-458b-9336-43a3d87fc60d",
     ae: "sofiiar@warmy.io", contact: "Charlie Mullinger", company: "WeConference Group",
     type: "Demo", date: "2026-05-14", duration: "24 min",
+    framework_scores: {
+      icebreaker: 4, discovery: 4, diagnosis: 5, solution_fit: 5, close: 3,
+    },
     went_well: [
-      "Immediately and correctly diagnosed the alias problem — Charlie was using aliases for cold outreach which is fundamentally wrong",
-      "Explained the alias vs separate mailbox distinction clearly and decisively",
-      "Practical advice: create a secondary domain, up to 5 mailboxes, 40 cold emails/day each",
-      "Reactivated Charlie's 6-month-old trial on the call — smart move",
-      "Correctly identified the best path: add all team mailboxes under Ashley's existing account",
-      "Included Ashley in the follow-up email plan — multi-stakeholder awareness",
+      "Immediately diagnosed the root cause: Charlie was using aliases for cold outreach — this is a fundamental infrastructure mistake",
+      "Pointed it out directly and decisively — 'this is why it's not working' — perfect doctor behaviour",
+      "Correct solution: separate domain, individual mailboxes, 40 cold emails/day each",
+      "Reactivated Charlie's 6-month-old trial on the call — smart and proactive",
+      "Correctly identified the alias vs separate mailbox distinction — strong product knowledge",
     ],
     improve: [
-      "Sofiia mentioned the starter plan is now annual-only — this may be a blocker for Charlie who wanted monthly",
-      "No pricing confirmed — the conversation ended without a number for Charlie to evaluate",
-      "Should have set a specific day/time for Charlie to respond rather than 'end of trial'",
+      "Starter plan is now annual-only — Sofiia flagged this but it may be a blocker for Charlie who seemed to want monthly",
+      "No pricing confirmed on the call — Charlie needs a number to evaluate",
+      "Close was soft — 'by end of trial' is vague. Should have asked: 'When do you want to have this fixed?' to set a decision deadline",
+      "Ashley (the other stakeholder) was mentioned — should have asked to include Ashley in the follow-up email and ideally the next call",
     ],
-    score: 84,
-    summary: "Technically sharp call. Sofiia correctly diagnosed and fixed Charlie's misconception about aliases in minutes. The follow-up email to both Charlie and Ashley needs to include clear pricing and a specific decision deadline.",
+    score: 83,
+    playbook_verdict: "Excellent diagnosis — Sofiia immediately identified and explained the alias problem. The playbook's 'point out the mistakes, then solve them' instruction was followed perfectly. The gap is the close — no number discussed, no date set.",
   },
 ];
 
-const PIPELINE_STAGES = {
-  meeting_scheduled: { label: "Meeting Scheduled", color: "#64748b", bg: "rgba(100,116,139,0.12)", order: 0 },
-  proposal_sent:     { label: "Price Proposal Sent", color: "#3b82f6", bg: "rgba(59,130,246,0.12)", order: 1 },
-  negotiation:       { label: "Negotiation", color: "#f59e0b", bg: "rgba(245,158,11,0.12)", order: 2 },
-  disqualified:      { label: "Disqualified", color: "#8b5cf6", bg: "rgba(139,92,246,0.12)", order: 3 },
-  closed_won:        { label: "Closed Won ✓", color: "#10b981", bg: "rgba(16,185,129,0.12)", order: 4 },
-  closed_lost:       { label: "Closed Lost", color: "#ef4444", bg: "rgba(239,68,68,0.12)", order: 5 },
-};
-
-// Compute what action is required and urgency based on playbook rules
-function getPipelineAction(deal) {
-  const d = deal.daysInStage;
-  const stage = deal.stage;
-
-  if (stage === "meeting_scheduled") {
-    if (deal.noShow) return { type: "mark_disqualified", label: "Mark No-Show / Disqualify", color: "#8b5cf6", urgency: "high", description: "Prospect didn't join — add disqualification reason and move on." };
-    return { type: "move_proposal", label: "Move → Price Proposal Sent", color: "#3b82f6", urgency: "medium", description: "Prospect joined the call. Move the deal to Price Proposal Sent and send the proposal." };
-  }
-  if (stage === "proposal_sent") {
-    if (d >= 10) return { type: "auto_close_warning", label: "⚠ Mark Closed Lost NOW", color: "#ef4444", urgency: "critical", description: `Day ${d} — AUTO-CLOSE triggered. No activity after Day 9. Mark lost immediately or it closes automatically.` };
-    if (d >= 9) return { type: "day9_decision", label: "Day 9 Decision Required", color: "#ef4444", urgency: "critical", description: "Final day. Move to Negotiation if discussions are alive, or mark Closed Lost." };
-    if (d >= 3 && !deal.followUpSentDay3) return { type: "day3_followup", label: "Send Day-3 Follow-up", color: "#f59e0b", urgency: "high", description: `Day ${d} — Follow-up is due. Send email, log activity in HubSpot, then mark this done.` };
-    if (d >= 3 && deal.followUpSentDay3) return { type: "waiting", label: "Waiting for reply", color: "#64748b", urgency: "low", description: `Follow-up sent on Day 3. Monitoring for reply.` };
-    return { type: "waiting", label: `Day ${d} of 10 — On track`, color: "#64748b", urgency: "low", description: `Proposal sent ${d} day${d !== 1 ? "s" : ""} ago. Day-3 follow-up will be due soon.` };
-  }
-  if (stage === "negotiation") {
-    if (d >= 10) return { type: "negotiation_auto_close", label: "⚠ Mark Closed Lost NOW", color: "#ef4444", urgency: "critical", description: `Day ${d} in Negotiation — 10-day cap hit. Log activity to reset clock or mark lost.` };
-    if (d >= 7) return { type: "negotiation_warning", label: "Log Activity or Close", color: "#f97316", urgency: "high", description: `Day ${d}/10 in Negotiation. ${10 - d} days left before auto-close. Log a call, email, or note.` };
-    return { type: "negotiation_active", label: `Day ${d}/10 in Negotiation`, color: "#f59e0b", urgency: "medium", description: "Keep activity logged. Silence for 10 days triggers auto-close." };
-  }
-  return { type: "none", label: "No action needed", color: "#10b981", urgency: "none", description: "Deal is in a terminal state." };
-}
-
-// Pipeline is loaded live from HubSpot on app start — see useEffect below
-const INITIAL_PIPELINE = [];
 const MCP = [
   { type: "url", url: "https://mcp.hubspot.com/anthropic",      name: "hubspot" },
   { type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1", name: "gmail"   },
@@ -1551,7 +1597,96 @@ function PipelineTab({ pipeline, activePipeline, pipelineUrgent, pipelineLoading
 function MeetingAnalysisCard({ analysis }) {
   const [expanded, setExpanded] = useState(false);
   const aeProfile = AE_PROFILES[analysis.ae];
-  const scoreColor = analysis.score >= 85 ? "#10b981" : analysis.score >= 75 ? "#f59e0b" : "#ef4444";
+  const scoreColor = analysis.score >= 85 ? "var(--warmy-green)" : analysis.score >= 75 ? "var(--warmy-orange)" : "var(--warmy-red)";
+
+  const FRAMEWORK_LABELS = {
+    icebreaker: "Icebreaker", discovery: "Discovery", diagnosis: "Diagnosis",
+    solution_fit: "Solution Fit", close: "Close",
+  };
+
+  return (
+    <div style={{ background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", borderRadius: 12, overflow: "hidden", marginBottom: 8 }}>
+      <div onClick={() => setExpanded(e => !e)} style={{ padding: "14px 16px", display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+        <AEAvatar email={analysis.ae} size={36} />
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "var(--warmy-text)", letterSpacing: "-0.2px" }}>{analysis.contact}</span>
+            <span style={{ fontSize: 12, color: "var(--warmy-text-dim)" }}>·</span>
+            <span style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>{analysis.company}</span>
+            <Badge label={analysis.type} color={aeProfile?.color || "#64748b"} />
+          </div>
+          <span style={{ fontSize: 11, color: "var(--warmy-text-dim)" }}>
+            {analysis.date} · {analysis.duration} · {aeProfile?.name}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 22, fontWeight: 800, color: scoreColor, lineHeight: 1, letterSpacing: "-1px" }}>{analysis.score}</div>
+            <div style={{ fontSize: 9, color: "var(--warmy-text-dim)", textTransform: "uppercase", letterSpacing: "0.08em" }}>/ 100</div>
+          </div>
+          <span style={{ color: "var(--warmy-text-dim)", fontSize: 14, transition: "transform 0.2s", display: "inline-block", transform: expanded ? "rotate(180deg)" : "none" }}>▾</span>
+        </div>
+      </div>
+
+      {expanded && (
+        <div style={{ padding: "0 16px 16px", borderTop: "1px solid var(--warmy-border-soft)" }}>
+
+          {/* Framework scorecard */}
+          {analysis.framework_scores && (
+            <div style={{ marginTop: 14, marginBottom: 14 }}>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "var(--warmy-text-dim)", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 600 }}>Call Framework Scores</p>
+              <div style={{ display: "flex", gap: 6 }}>
+                {Object.entries(analysis.framework_scores).map(([key, val]) => {
+                  const c = val >= 4 ? "var(--warmy-green)" : val >= 3 ? "var(--warmy-orange)" : "var(--warmy-red)";
+                  return (
+                    <div key={key} style={{ flex: 1, textAlign: "center", padding: "8px 4px", background: `${c}10`, border: `1px solid ${c}30`, borderRadius: 8 }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: c }}>{val}<span style={{ fontSize: 10, color: "var(--warmy-text-dim)" }}>/5</span></div>
+                      <div style={{ fontSize: 9, color: "var(--warmy-text-dim)", marginTop: 2, lineHeight: 1.3 }}>{FRAMEWORK_LABELS[key]}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Playbook verdict */}
+          {analysis.playbook_verdict && (
+            <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: "rgba(255,107,43,0.06)", borderLeft: "3px solid var(--warmy-orange)" }}>
+              <p style={{ margin: "0 0 3px", fontSize: 10, color: "var(--warmy-orange)", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700 }}>Playbook Verdict</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--warmy-text-muted)", lineHeight: 1.65 }}>{analysis.playbook_verdict}</p>
+            </div>
+          )}
+
+          {/* Went well / Improve */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "var(--warmy-green)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                ✓ What went well
+              </p>
+              {analysis.went_well.map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
+                  <span style={{ color: "var(--warmy-green)", fontSize: 11, flexShrink: 0, marginTop: 2 }}>·</span>
+                  <span style={{ fontSize: 12, color: "var(--warmy-text-muted)", lineHeight: 1.6 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: "var(--warmy-orange)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 700, display: "flex", alignItems: "center", gap: 5 }}>
+                △ Coaching points
+              </p>
+              {analysis.improve.map((item, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, marginBottom: 7, alignItems: "flex-start" }}>
+                  <span style={{ color: "var(--warmy-orange)", fontSize: 11, flexShrink: 0, marginTop: 2 }}>·</span>
+                  <span style={{ fontSize: 12, color: "var(--warmy-text-muted)", lineHeight: 1.6 }}>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
   return (
     <div style={{
