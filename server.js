@@ -168,25 +168,31 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
         "hs_deal_stage_probability", "notes_last_contacted",
       ],
       sorts: [{ propertyName: "hs_lastmodifieddate", direction: "DESCENDING" }],
-      limit: 500,
+      limit: 200,
     };
 
-    const hsResp = await fetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${HS_TOKEN}`,
-      },
-      body: JSON.stringify(searchBody),
-    });
+    let allDeals = [];
+    let after = undefined;
 
-    if (!hsResp.ok) {
-      const err = await hsResp.text();
-      return res.status(500).json({ error: `HubSpot API error: ${hsResp.status} — ${err}` });
+    // Paginate through all deals (HubSpot max 200 per page)
+    while (true) {
+      if (after) searchBody.after = after;
+      const hsResp = await fetch("https://api.hubapi.com/crm/v3/objects/deals/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${HS_TOKEN}` },
+        body: JSON.stringify(searchBody),
+      });
+      if (!hsResp.ok) {
+        const err = await hsResp.text();
+        return res.status(500).json({ error: `HubSpot API error: ${hsResp.status} — ${err}` });
+      }
+      const hsData = await hsResp.json();
+      allDeals = allDeals.concat(hsData.results || []);
+      if (!hsData.paging?.next?.after || allDeals.length >= 600) break;
+      after = hsData.paging.next.after;
     }
 
-    const hsData = await hsResp.json();
-    const deals = hsData.results || [];
+    const deals = allDeals;
 
     // Map owner IDs to AE emails
     const OWNER_EMAIL_MAP = {
