@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 /* ═══════════════════════════════════════════════════════
    AE STYLE PROFILES — learned from Avoma transcripts
