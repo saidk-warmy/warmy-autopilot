@@ -165,7 +165,13 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
       properties: [
         "dealname", "dealstage", "amount", "hubspot_owner_id",
         "hs_lastmodifieddate", "createdate", "closedate",
-        "hs_deal_stage_probability", "notes_last_contacted"
+        "hs_deal_stage_probability", "notes_last_contacted",
+        "hs_date_entered_86886808",
+        "hs_date_entered_86886810",
+        "hs_date_entered_86886811",
+        "hs_date_entered_86886813",
+        "hs_date_entered_86886814",
+        "hs_date_entered_86907056",
       ],
       sorts: [{ propertyName: "hs_lastmodifieddate", direction: "DESCENDING" }],
       limit: 200,
@@ -202,9 +208,12 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
       const stageId = p.dealstage || "";
       const stageInfo = STAGE_MAP[stageId] || { key: "meeting_scheduled", label: p.dealstage || "Unknown" };
 
-      // Calculate days in current stage from last modified date
-      const lastModified = new Date(p.hs_lastmodifieddate || p.createdate);
-      const daysInStage = Math.floor((Date.now() - lastModified.getTime()) / (1000 * 60 * 60 * 24));
+      // Use the actual date the deal entered its current stage
+      const stageEntryDateKey = `hs_date_entered_${stageId}`;
+      const stageEntryDate = p[stageEntryDateKey]
+        ? new Date(p[stageEntryDateKey])
+        : new Date(p.hs_lastmodifieddate || p.createdate);
+      const daysInStage = Math.floor((Date.now() - stageEntryDate.getTime()) / (1000 * 60 * 60 * 24));
 
       // Extract contact name from deal name (format: "Name <> Warmy.io -date")
       const dealName = p.dealname || "";
