@@ -2270,9 +2270,10 @@ export default function App() {
               })}
             </div>
 
-            {/* Analysis cards */}
-            {MEETING_ANALYSES
+            {/* Analysis cards — sorted newest first */}
+            {[...MEETING_ANALYSES]
               .filter(a => aeFilter === "all" || a.ae === aeFilter)
+              .sort((a, b) => new Date(b.date) - new Date(a.date))
               .map(a => <MeetingAnalysisCard key={a.id} analysis={a} />)
             }
           </div>
