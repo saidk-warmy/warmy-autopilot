@@ -1816,9 +1816,9 @@ export default function App() {
       const { newTasks, message, processed, totalFound } = data;
 
       setSyncLog([
-        `Scanned ${totalFound} meetings from Avoma`,
-        `${processed} new completed meetings found`,
-        message,
+        `Scanned ${data.totalFound || data.debug?.totalFetched || "?"} meetings from Avoma (last 14 days)`,
+        `${data.debug?.completed || 0} completed · ${data.debug?.withTranscript || 0} with transcripts · ${data.newCount || data.processed || 0} new`,
+        data.message,
       ]);
 
       if (newTasks && newTasks.length > 0) {

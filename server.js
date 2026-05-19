@@ -294,25 +294,25 @@ app.post("/api/avoma-sync", async (req, res) => {
 
     // ── 1. Fetch recent completed meetings from Avoma ──
     const existingIds = req.body.existingMeetingIds || [];
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
 
-    const aevomaUrl = `https://api.avoma.com/v1/meetings/?from_date=${sevenDaysAgo}&to_date=${now}&page_size=50&o=-start_at`;
+    // Fetch multiple pages to get all recent meetings
+    let allMeetings = [];
+    let nextUrl = `https://api.avoma.com/v1/meetings/?from_date=${fourteenDaysAgo}&to_date=${now}&page_size=100&o=-start_at`;
 
-    const avomaResp = await fetch(aevomaUrl, {
-      headers: {
-        "Authorization": `Bearer ${AVOMA_KEY}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!avomaResp.ok) {
-      const errText = await avomaResp.text();
-      return res.status(500).json({ error: `Avoma API error: ${avomaResp.status} — ${errText}` });
+    while (nextUrl && allMeetings.length < 300) {
+      const avomaResp = await fetch(nextUrl, {
+        headers: { "Authorization": `Bearer ${AVOMA_KEY}`, "Content-Type": "application/json" },
+      });
+      if (!avomaResp.ok) {
+        const errText = await avomaResp.text();
+        return res.status(500).json({ error: `Avoma API error: ${avomaResp.status} — ${errText}` });
+      }
+      const avomaData = await avomaResp.json();
+      allMeetings = allMeetings.concat(avomaData.results || []);
+      nextUrl = avomaData.next || null;
     }
-
-    const avomaData = await avomaResp.json();
-    const allMeetings = avomaData.results || [];
 
     // Filter: completed, has transcript, external (not internal), not already in app
     const WARMY_EMAILS = [
@@ -323,20 +323,36 @@ app.post("/api/avoma-sync", async (req, res) => {
 
     const newMeetings = allMeetings.filter(m => {
       if (m.is_internal) return false;
+      if (m.is_private) return false;
+      // state = "completed" means the meeting happened (past)
       if (m.state !== "completed") return false;
-      if (!m.transcript_ready) return false;
+      // Must have transcript ready OR audio ready (transcription might still be processing)
+      if (!m.transcript_ready && !m.audio_ready) return false;
       if (existingIds.includes(m.uuid)) return false;
 
       // Must have at least one external attendee
-      const attendeeEmails = (m.attendees || []).map(a => a.email.toLowerCase());
-      const hasExternal = attendeeEmails.some(e => !WARMY_EMAILS.includes(e));
+      const attendeeEmails = (m.attendees || []).map(a => (a.email || "").toLowerCase());
+      const hasExternal = attendeeEmails.some(e => e && !WARMY_EMAILS.includes(e));
       if (!hasExternal) return false;
+
+      // Must have a Warmy AE as attendee
+      const hasAE = attendeeEmails.some(e => WARMY_EMAILS.includes(e));
+      if (!hasAE) return false;
 
       return true;
     });
 
     if (newMeetings.length === 0) {
-      return res.json({ newTasks: [], message: "No new meetings found" });
+      return res.json({
+        newTasks: [],
+        message: "No new meetings found",
+        debug: {
+          totalFetched: allMeetings.length,
+          completed: allMeetings.filter(m => m.state === "completed").length,
+          withTranscript: allMeetings.filter(m => m.transcript_ready).length,
+          alreadyKnown: allMeetings.filter(m => existingIds.includes(m.uuid)).length,
+        }
+      });
     }
 
     // ── 2. For each new meeting, fetch transcript + analyze with Claude ──
