@@ -194,6 +194,32 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
 
     const deals = allDeals;
 
+    // For active deals only, fetch the real stage entry date
+    const ACTIVE_STAGES = new Set(["86886808", "86886810", "86886811"]);
+    const activeDeals = deals.filter(d => ACTIVE_STAGES.has(d.properties.dealstage));
+
+    const stageEntryProps = [
+      "hs_date_entered_86886808", "hs_date_entered_86886810", "hs_date_entered_86886811",
+    ].join(",");
+
+    const dealDetails = {};
+    // Batch in groups of 10 to avoid overwhelming the API
+    for (let i = 0; i < activeDeals.length; i += 10) {
+      const batch = activeDeals.slice(i, i + 10);
+      await Promise.all(batch.map(async (deal) => {
+        try {
+          const r = await fetch(
+            `https://api.hubapi.com/crm/v3/objects/deals/${deal.id}?properties=${stageEntryProps}`,
+            { headers: { "Authorization": `Bearer ${HS_TOKEN}` } }
+          );
+          if (r.ok) {
+            const d = await r.json();
+            dealDetails[deal.id] = d.properties || {};
+          }
+        } catch {}
+      }));
+    }
+
     // Map owner IDs to AE emails
     const OWNER_EMAIL_MAP = {
       "88489253": "felipev@warmy.io",
@@ -208,9 +234,13 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
       const stageId = p.dealstage || "";
       const stageInfo = STAGE_MAP[stageId] || { key: "meeting_scheduled", label: p.dealstage || "Unknown" };
 
-      // Use last modified date as proxy for days in stage
-      const lastModified = new Date(p.hs_lastmodifieddate || p.createdate);
-      const daysInStage = Math.max(0, Math.floor((Date.now() - lastModified.getTime()) / (1000 * 60 * 60 * 24)));
+      // Use real stage entry date if available, otherwise fall back to lastModified
+      const extraProps = dealDetails[deal.id] || {};
+      const stageEntryDateKey = `hs_date_entered_${stageId}`;
+      const stageEntryDate = extraProps[stageEntryDateKey]
+        ? new Date(extraProps[stageEntryDateKey])
+        : new Date(p.hs_lastmodifieddate || p.createdate);
+      const daysInStage = Math.max(0, Math.floor((Date.now() - stageEntryDate.getTime()) / (1000 * 60 * 60 * 24)));
 
       // Extract contact name from deal name (format: "Name <> Warmy.io -date")
       const dealName = p.dealname || "";
