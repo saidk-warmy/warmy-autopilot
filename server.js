@@ -166,7 +166,6 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
         "dealname", "dealstage", "amount", "hubspot_owner_id",
         "hs_lastmodifieddate", "createdate", "closedate",
         "hs_deal_stage_probability", "notes_last_contacted",
-        "hs_date_entered_86886808", "hs_date_entered_86886810", "hs_date_entered_86886811",
       ],
       sorts: [{ propertyName: "hs_lastmodifieddate", direction: "DESCENDING" }],
       limit: 200,
@@ -195,27 +194,29 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
 
     const deals = allDeals;
 
-    // For active deals only, fetch the real stage entry date
+    // For active deals, fetch property history to get exact stage entry date
     const ACTIVE_STAGES = new Set(["86886808", "86886810", "86886811"]);
     const activeDeals = deals.filter(d => ACTIVE_STAGES.has(d.properties.dealstage));
 
-    const stageEntryProps = [
-      "hs_date_entered_86886808", "hs_date_entered_86886810", "hs_date_entered_86886811",
-    ].join(",");
-
-    const dealDetails = {};
-    // Batch in groups of 10 to avoid overwhelming the API
-    for (let i = 0; i < activeDeals.length; i += 10) {
-      const batch = activeDeals.slice(i, i + 10);
+    const dealStageEntryDates = {};
+    // Batch in groups of 5 to stay within rate limits
+    for (let i = 0; i < activeDeals.length; i += 5) {
+      const batch = activeDeals.slice(i, i + 5);
       await Promise.all(batch.map(async (deal) => {
         try {
           const r = await fetch(
-            `https://api.hubapi.com/crm/v3/objects/deals/${deal.id}?properties=${stageEntryProps}`,
+            `https://api.hubapi.com/crm/v3/objects/deals/${deal.id}?propertiesWithHistory=dealstage`,
             { headers: { "Authorization": `Bearer ${HS_TOKEN}` } }
           );
           if (r.ok) {
             const d = await r.json();
-            dealDetails[deal.id] = d.properties || {};
+            const history = d.propertiesWithHistory?.dealstage || [];
+            const currentStage = deal.properties.dealstage;
+            // Find the most recent entry where this stage was set
+            const stageEntry = history.find(h => h.value === currentStage);
+            if (stageEntry?.timestamp) {
+              dealStageEntryDates[deal.id] = new Date(stageEntry.timestamp);
+            }
           }
         } catch {}
       }));
@@ -235,13 +236,9 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
       const stageId = p.dealstage || "";
       const stageInfo = STAGE_MAP[stageId] || { key: "meeting_scheduled", label: p.dealstage || "Unknown" };
 
-      // Use hs_date_entered_ if available, otherwise createdate
-      // (hs_lastmodifieddate is unreliable — updates on any activity)
-      const stageEntryDateKey = `hs_date_entered_${stageId}`;
-      const extraProps = dealDetails[deal.id] || {};
-      const stageEntryDate = extraProps[stageEntryDateKey]
-        ? new Date(extraProps[stageEntryDateKey])
-        : new Date(p.createdate || p.hs_lastmodifieddate);
+      // Use exact stage entry date from property history, fallback to createdate
+      const stageEntryDate = dealStageEntryDates[deal.id]
+        || new Date(p.createdate || p.hs_lastmodifieddate);
       const daysInStage = Math.max(0, Math.floor((Date.now() - stageEntryDate.getTime()) / (1000 * 60 * 60 * 24)));
 
       // Extract contact name from deal name (format: "Name <> Warmy.io -date")
