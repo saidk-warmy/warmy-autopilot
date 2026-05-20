@@ -1945,11 +1945,17 @@ export default function App() {
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
-  // Action Queue = only FU1 (post-meeting), only pending, not closed lost, newest first
+  // Action Queue = only FU1 (post-meeting), only pending, exclude closed stages
+  // Also cross-reference with live HubSpot pipeline to catch deals closed after task was created
+  const CLOSED_STAGES = new Set(["Closed Lost", "Closed Won ✓", "Disqualified", "closed_lost", "closed_won", "disqualified"]);
+  const closedHubspotIds = new Set(
+    pipeline.filter(d => CLOSED_STAGES.has(d.stage)).map(d => String(d.hubspotId))
+  );
   const pendingTasks = tasks.filter(t =>
     t.status === "pending" &&
     t.type === "fu1" &&
-    !["Closed Lost", "Disqualified", "closed_lost", "disqualified"].includes(t.dealStage) &&
+    !CLOSED_STAGES.has(t.dealStage) &&
+    !(t.hubspotDealId && closedHubspotIds.has(String(t.hubspotDealId))) &&
     (aeFilter === "all" || t.ae === aeFilter)
   ).sort((a, b) => new Date(b.meetingDate) - new Date(a.meetingDate));
 
