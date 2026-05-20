@@ -87,7 +87,7 @@ const AE_PROFILES = {
 ═══════════════════════════════════════════════════════ */
 const FU_CONFIG = {
   fu1: {
-    label: "Post-Meeting Follow-up",
+    label: "Price Proposal Follow Up",
     day: 0,
     badge: "FU1",
     color: "#3b82f6",
@@ -1945,10 +1945,11 @@ export default function App() {
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
-  // Action Queue = only FU1 (post-meeting), only pending, newest first
+  // Action Queue = only FU1 (post-meeting), only pending, not closed lost, newest first
   const pendingTasks = tasks.filter(t =>
     t.status === "pending" &&
     t.type === "fu1" &&
+    !["Closed Lost", "Disqualified", "closed_lost", "disqualified"].includes(t.dealStage) &&
     (aeFilter === "all" || t.ae === aeFilter)
   ).sort((a, b) => new Date(b.meetingDate) - new Date(a.meetingDate));
 
@@ -2061,7 +2062,7 @@ export default function App() {
   const AE_LIST = Object.entries(AE_PROFILES).map(([email, p]) => ({ email, ...p }));
 
   const TAB_CONFIG = [
-    { id: "tasks",    label: "Follow-ups",        count: pendingTasks.length },
+    { id: "tasks",    label: "Price Proposal Follow Up",        count: pendingTasks.length },
     { id: "pipeline", label: "Pipeline Control",  count: pipelineUrgent.length > 0 ? pipelineUrgent.length : null },
     { id: "analysis", label: "Meeting Analysis",  count: null },
   ];
@@ -2309,9 +2310,9 @@ export default function App() {
           <div style={{ animation: "slideUp 0.3s ease" }}>
 
             <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--warmy-text)", letterSpacing: "-0.3px", marginBottom: 4 }}>Post-Meeting Follow-ups</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--warmy-text)", letterSpacing: "-0.3px", marginBottom: 4 }}>Price Proposal Follow Up</h2>
               <p style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>
-                Send the proposal + meeting summary right after every demo
+                Send the price proposal + meeting summary right after every demo
                 {pendingTasks.length > 0 && <span style={{ color: "var(--warmy-orange)", fontWeight: 600, marginLeft: 8 }}>· {pendingTasks.length} waiting</span>}
               </p>
             </div>
