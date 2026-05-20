@@ -1999,28 +1999,9 @@ export default function App() {
         data.message,
       ]);
 
-      if (newTasks && newTasks.length > 0) {
-        // Update daysSinceMeeting for all existing tasks too
-        setTasks(prev => {
-          const updated = prev.map(t => ({
-            ...t,
-            daysSinceMeeting: Math.floor(
-              (Date.now() - new Date(t.meetingDate + "T12:00:00Z").getTime()) / (1000 * 60 * 60 * 24)
-            ),
-            // Auto-escalate follow-up type based on days
-            type: t.status === "pending" ? (
-              t.daysSinceMeeting >= 9 ? "fu4" :
-              t.daysSinceMeeting >= 6 ? "fu3" :
-              t.daysSinceMeeting >= 3 ? "fu2" : t.type
-            ) : t.type,
-          }));
-          return [...updated, ...newTasks];
-        });
-      }
-
-      } else {
-        // Still update days on existing tasks
-        setTasks(prev => prev.map(t => ({
+      // Update existing task days + add new tasks
+      setTasks(prev => {
+        const updated = prev.map(t => ({
           ...t,
           daysSinceMeeting: Math.floor(
             (Date.now() - new Date(t.meetingDate + "T12:00:00Z").getTime()) / (1000 * 60 * 60 * 24)
@@ -2030,10 +2011,11 @@ export default function App() {
             t.daysSinceMeeting >= 6 ? "fu3" :
             t.daysSinceMeeting >= 3 ? "fu2" : t.type
           ) : t.type,
-        })));
-      }
+        }));
+        return newTasks && newTasks.length > 0 ? [...updated, ...newTasks] : updated;
+      });
 
-      // Add any new analyses from the sync
+      // Add any new analyses
       if (newAnalyses && newAnalyses.length > 0) {
         setAnalyses(prev => [...newAnalyses, ...prev]);
       }
