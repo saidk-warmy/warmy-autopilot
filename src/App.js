@@ -2018,11 +2018,6 @@ export default function App() {
         });
       }
 
-      // Add any new analyses from the sync
-      if (newAnalyses && newAnalyses.length > 0) {
-        setAnalyses(prev => [...newAnalyses, ...prev]);
-      }
-
       } else {
         // Still update days on existing tasks
         setTasks(prev => prev.map(t => ({
@@ -2036,6 +2031,11 @@ export default function App() {
             t.daysSinceMeeting >= 3 ? "fu2" : t.type
           ) : t.type,
         })));
+      }
+
+      // Add any new analyses from the sync
+      if (newAnalyses && newAnalyses.length > 0) {
+        setAnalyses(prev => [...newAnalyses, ...prev]);
       }
 
       setLastSync(new Date());
