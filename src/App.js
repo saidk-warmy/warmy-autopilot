@@ -1945,12 +1945,18 @@ export default function App() {
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
+  // Action Queue = only FU1 (post-meeting), only pending, newest first
   const pendingTasks = tasks.filter(t =>
     t.status === "pending" &&
+    t.type === "fu1" &&
     (aeFilter === "all" || t.ae === aeFilter)
-  ).sort((a, b) => b.daysSinceMeeting - a.daysSinceMeeting);
+  ).sort((a, b) => new Date(b.meetingDate) - new Date(a.meetingDate));
 
-  const sentTasks = tasks.filter(t => t.status === "sent" && (aeFilter === "all" || t.ae === aeFilter));
+  const sentTasks = tasks.filter(t =>
+    t.status === "sent" &&
+    t.type === "fu1" &&
+    (aeFilter === "all" || t.ae === aeFilter)
+  ).sort((a, b) => new Date(b.meetingDate) - new Date(a.meetingDate));
 
   const handleDraftGenerated = (id, draft) => {
     setTasks(prev => prev.map(t => t.id === id ? { ...t, draft } : t));
@@ -2055,7 +2061,7 @@ export default function App() {
   const AE_LIST = Object.entries(AE_PROFILES).map(([email, p]) => ({ email, ...p }));
 
   const TAB_CONFIG = [
-    { id: "tasks",    label: "Action Queue",      count: pendingTasks.length },
+    { id: "tasks",    label: "Follow-ups",        count: pendingTasks.length },
     { id: "pipeline", label: "Pipeline Control",  count: pipelineUrgent.length > 0 ? pipelineUrgent.length : null },
     { id: "analysis", label: "Meeting Analysis",  count: null },
   ];
@@ -2298,70 +2304,61 @@ export default function App() {
       {/* ── MAIN CONTENT ── */}
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "24px 24px 48px" }}>
 
-        {/* ════ ACTION QUEUE ════ */}
+        {/* ════ FOLLOW-UPS ════ */}
         {tab === "tasks" && (
           <div style={{ animation: "slideUp 0.3s ease" }}>
-            {/* Summary strip */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 24 }}>
+
+            <div style={{ marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--warmy-text)", letterSpacing: "-0.3px", marginBottom: 4 }}>Post-Meeting Follow-ups</h2>
+              <p style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>
+                Send the proposal + meeting summary right after every demo
+                {pendingTasks.length > 0 && <span style={{ color: "var(--warmy-orange)", fontWeight: 600, marginLeft: 8 }}>· {pendingTasks.length} waiting</span>}
+              </p>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 24 }}>
               {[
-                { label: "Pending",  val: pendingTasks.length,  color: "var(--warmy-orange)" },
-                { label: "Urgent",   val: urgentCount,           color: "var(--warmy-red)" },
-                { label: "Sent",     val: sentTasks.length,      color: "var(--warmy-green)" },
-                { label: "Pipeline", val: pipelinePending,       color: "var(--warmy-yellow)" },
+                { label: "Need to Send", val: pendingTasks.length, color: "var(--warmy-orange)" },
+                { label: "Sent Today",   val: sentTasks.filter(t => t.meetingDate === new Date().toISOString().split("T")[0]).length, color: "var(--warmy-green)" },
+                { label: "Total Sent",   val: sentTasks.length, color: "var(--warmy-blue)" },
               ].map(s => (
-                <div key={s.label} style={{ padding: "12px 14px", background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", borderRadius: 10, borderTop: `2px solid ${s.color}` }}>
-                  <div style={{ fontSize: 10, color: "#475569", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace", marginBottom: 5 }}>{s.label}</div>
-                  <div style={{ fontSize: 26, fontWeight: 700, color: "#f8fafc", fontFamily: "'JetBrains Mono', monospace", lineHeight: 1 }}>{s.val}</div>
+                <div key={s.label} style={{ padding: "12px 16px", background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", borderRadius: 10, borderTop: `2px solid ${s.color}` }}>
+                  <div style={{ fontSize: 10, color: "var(--warmy-text-dim)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 5 }}>{s.label}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: "var(--warmy-text)", lineHeight: 1 }}>{s.val}</div>
                 </div>
               ))}
             </div>
 
-            {/* Follow-up legend */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-              {Object.entries(FU_CONFIG).map(([key, cfg]) => (
-                <div key={key} style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 20, background: `${cfg.color}10`, border: `1px solid ${cfg.color}25` }}>
-                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: cfg.color }} />
-                  <span style={{ fontSize: 11, color: cfg.color, fontFamily: "'JetBrains Mono', monospace" }}>{cfg.badge} — Day {cfg.day}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Task cards */}
             {pendingTasks.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 24px", color: "#334155" }}>
-                <div style={{ fontSize: 32, marginBottom: 12 }}>✓</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#475569", marginBottom: 6 }}>Action queue is clear</div>
-                <div style={{ fontSize: 13, color: "#334155" }}>Sync Avoma to check for new completed meetings</div>
+              <div style={{ textAlign: "center", padding: "56px 24px" }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>🎉</div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "var(--warmy-text)", marginBottom: 8 }}>All follow-ups sent</div>
+                <div style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>Hit Sync Avoma after your next meeting — the follow-up will appear here automatically</div>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {pendingTasks.map(task => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onDraftGenerated={handleDraftGenerated}
-                    onSend={handleSend}
-                    onPipelineAction={handlePipelineAction}
-                    onDismiss={handleDismiss}
-                  />
+                  <TaskCard key={task.id} task={task}
+                    onDraftGenerated={handleDraftGenerated} onSend={handleSend}
+                    onPipelineAction={handlePipelineAction} onDismiss={handleDismiss} />
                 ))}
               </div>
             )}
 
-            {/* Sent/done */}
             {sentTasks.length > 0 && (
-              <div style={{ marginTop: 24 }}>
-                <p style={{ margin: "0 0 10px", fontSize: 11, color: "#334155", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "'JetBrains Mono', monospace" }}>Completed today</p>
+              <div style={{ marginTop: 28 }}>
+                <p style={{ margin: "0 0 10px", fontSize: 11, color: "var(--warmy-text-dim)", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>Sent ✓</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {sentTasks.map(task => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      onDraftGenerated={handleDraftGenerated}
-                      onSend={handleSend}
-                      onPipelineAction={handlePipelineAction}
-                      onDismiss={handleDismiss}
-                    />
+                    <div key={task.id} style={{ padding: "10px 16px", background: "var(--warmy-navy-2)", border: "1px solid var(--warmy-border)", borderRadius: 10, display: "flex", alignItems: "center", gap: 12, opacity: 0.7 }}>
+                      <AEAvatar email={task.ae} size={30} />
+                      <div style={{ flex: 1 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--warmy-text)" }}>{task.contactName}</span>
+                        <span style={{ fontSize: 12, color: "var(--warmy-text-dim)", marginLeft: 8 }}>· {task.company}</span>
+                      </div>
+                      <span style={{ fontSize: 11, color: "var(--warmy-green)", fontWeight: 600 }}>✓ Sent</span>
+                      <span style={{ fontSize: 11, color: "var(--warmy-text-dim)" }}>{task.meetingDate}</span>
+                    </div>
                   ))}
                 </div>
               </div>
