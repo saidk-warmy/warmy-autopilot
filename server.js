@@ -421,10 +421,10 @@ app.post("/api/avoma-sync", async (req, res) => {
           body: JSON.stringify({
             model: "claude-sonnet-4-5",
             max_tokens: 800,
-            system: "You are a sales intelligence assistant for Warmy.io. Analyze sales meeting transcripts and extract structured deal context. Be specific — reference actual numbers, names, and pain points from the transcript. Return ONLY valid JSON, no markdown, no explanation.",
+            system: "You are a sales intelligence assistant for Warmy.io. Analyze sales meeting transcripts and extract structured deal context for the post-meeting follow-up email. Be specific — reference actual numbers, names, pricing discussed, and pain points from the transcript. Return ONLY valid JSON, no markdown, no explanation.",
             messages: [{
               role: "user",
-              content: `Analyze this Warmy.io sales meeting and return a JSON object.
+              content: `Analyze this Warmy.io sales meeting and return a JSON object for the post-meeting follow-up task.
 
 Meeting subject: ${meeting.subject || "Warmy.io Demo"}
 Meeting type: ${meeting.type?.label || "Demo"}
@@ -443,14 +443,14 @@ Return ONLY this JSON structure:
   "contactName": "full name of primary prospect",
   "contactEmail": "primary prospect email",
   "company": "company name + brief descriptor e.g. 'Acme Corp (SaaS startup)'",
-  "dealValue": "estimated deal value e.g. '$199/mo' or 'TBD' if not discussed",
+  "dealValue": "exact pricing discussed e.g. '$199/mo' or 'TBD' if not discussed",
   "dealStage": "Demo Done|Price Proposal Sent|Proposal Done",
   "followUpType": "fu1",
-  "meetingContext": "3-4 sentences: what their business does, their pain point, what was discussed/offered, what the next step is. Be specific with numbers if mentioned.",
-  "nextStep": "one sentence on exactly what needs to happen next",
-  "urgency": "high|medium|low",
-  "pipelineStatus": "pending|done"
-}`,
+  "meetingContext": "3-4 sentences covering: (1) what their business does and pain point in their words, (2) specific numbers mentioned (email volume, mailboxes, domains), (3) what solution/pricing was offered, (4) what the agreed next step is.",
+  "nextStep": "exact next step agreed on the call e.g. 'Send payment link for $199/mo starter plan'",
+  "urgency": "high",
+  "pipelineStatus": "pending"
+}`
             }],
           }),
         });

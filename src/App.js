@@ -91,7 +91,13 @@ const FU_CONFIG = {
     day: 0,
     badge: "FU1",
     color: "#3b82f6",
-    instruction: "Thank them for the meeting. Recap the 2-3 KEY things discussed (be specific — names, numbers, use cases). Confirm agreed next steps. Excited, warm tone. Under 90 words.",
+    instruction: `This is the most important email — sent right after the meeting. It must:
+1. Thank them warmly for their time (1 line, specific to what was great about the call)
+2. Summarize the key pain point they described in their own words (be specific — quote their numbers, use case, tool they mentioned)
+3. Confirm the solution discussed (which Warmy plan/feature, pricing if agreed)
+4. Include the proposal/payment link placeholder: [PAYMENT LINK]
+5. Set a clear next step with a specific date (e.g. "I'll follow up Thursday if I don't hear back")
+Under 120 words. No fluff. Sounds like a human sent it 5 minutes after the call.`,
     pipelineAction: "Move to Price Proposal Sent",
     pipelineStage: "Price Proposal Sent",
   },
