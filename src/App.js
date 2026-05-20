@@ -223,6 +223,7 @@ const INITIAL_TASKS = [
   },
   {
     id: "T009", dealId: "FANBASIS_001", type: "fu1",
+    hubspotDealId: "60035528479",
     contactName: "Christina", contactEmail: "christina@fanbasis.com",
     company: "FanBasis", ae: "felipev@warmy.io",
     meetingDate: "2026-05-15", daysSinceMeeting: 2,
@@ -310,6 +311,7 @@ const INITIAL_TASKS = [
   },
   {
     id: "T016", dealId: "RAVEN_001", type: "fu1",
+    hubspotDealId: "60267744890",
     contactName: "Raven Reichl", contactEmail: "ravenreichl.rr@gmail.com",
     company: "Raven Reichl (freelancer)", ae: "sofiiar@warmy.io",
     meetingDate: "2026-05-15", daysSinceMeeting: 2,
@@ -320,6 +322,7 @@ const INITIAL_TASKS = [
   },
   {
     id: "T017", dealId: "ANSHUMAN_001", type: "fu1",
+    hubspotDealId: "60249987662",
     contactName: "Anshuman Gupta", contactEmail: "ag@junoinnovationlabs.com",
     company: "Juno Innovation Labs", ae: "sofiiar@warmy.io",
     meetingDate: "2026-05-15", daysSinceMeeting: 2,
