@@ -127,6 +127,18 @@ app.post("/api/hubspot-log", async (req, res) => {
       }),
     });
 
+    // Also update notes_last_contacted on the deal so the Negotiation clock resets correctly
+    await fetch(`https://api.hubapi.com/crm/v3/objects/deals/${dealId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${HS_TOKEN}`,
+      },
+      body: JSON.stringify({
+        properties: { notes_last_contacted: new Date().toISOString() }
+      }),
+    });
+
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -236,9 +248,18 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
       const stageId = p.dealstage || "";
       const stageInfo = STAGE_MAP[stageId] || { key: "meeting_scheduled", label: p.dealstage || "Unknown" };
 
-      // Use exact stage entry date from property history, fallback to createdate
-      const stageEntryDate = dealStageEntryDates[deal.id]
-        || new Date(p.createdate || p.hs_lastmodifieddate);
+      // For Negotiation: clock resets on last activity (notes_last_contacted or hs_lastmodifieddate)
+      // For other stages: use actual stage entry date from property history
+      let stageEntryDate;
+      if (stageInfo.key === "negotiation") {
+        // Use the most recent of: notes_last_contacted, hs_lastmodifieddate
+        const lastContacted = p.notes_last_contacted ? new Date(p.notes_last_contacted) : null;
+        const lastModified = new Date(p.hs_lastmodifieddate || p.createdate);
+        stageEntryDate = lastContacted && lastContacted > lastModified ? lastContacted : lastModified;
+      } else {
+        stageEntryDate = dealStageEntryDates[deal.id]
+          || new Date(p.createdate || p.hs_lastmodifieddate);
+      }
       const daysInStage = Math.max(0, Math.floor((Date.now() - stageEntryDate.getTime()) / (1000 * 60 * 60 * 24)));
 
       // Extract contact name from deal name (format: "Name <> Warmy.io -date")
