@@ -1272,6 +1272,57 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
   const [loading, setLoading] = useState(false);
   const [actionError, setActionError] = useState(null);
   const [actionSuccess, setActionSuccess] = useState(null);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [generatingEmail, setGeneratingEmail] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [showEmailPanel, setShowEmailPanel] = useState(false);
+
+  const generateFollowUpEmail = async () => {
+    setGeneratingEmail(true);
+    setShowEmailPanel(true);
+    const aeProfile = AE_PROFILES[deal.ae] || {};
+    const fuLabel = deal.daysInStage >= 9 ? "final follow-up" : deal.daysInStage >= 6 ? "third follow-up" : "Day-3 follow-up";
+    try {
+      const text = await callClaude(
+        `You are writing a ${fuLabel} email for ${aeProfile.name || "an AE"} at Warmy.io. 
+Tone: ${aeProfile.tone || "professional, warm"}. 
+Phrases they use: ${(aeProfile.phrases || []).join(", ")}.
+Closing: ${aeProfile.closing || "Best,\n" + (aeProfile.name || "AE")}.
+Write ONLY the email body — no subject line, no metadata. Under 120 words. Reference specifics from the context.`,
+        `Write a ${fuLabel} email to ${deal.contactName} at ${deal.company}.
+Deal value: ${deal.dealValue}. Days since proposal: ${deal.daysInStage}.
+Context: ${deal.notes}
+The email should feel like a natural check-in, reference what was discussed, create gentle urgency, and have a clear CTA.`
+      );
+      setEmailDraft(text.trim());
+    } catch (e) {
+      setEmailDraft(`Error generating draft: ${e.message}`);
+    }
+    setGeneratingEmail(false);
+  };
+
+  const sendFollowUpEmail = async () => {
+    if (!emailDraft) return;
+    setSendingEmail(true);
+    try {
+      await callClaude(
+        "You are a Gmail assistant for Warmy.io sales team.",
+        `Use Gmail MCP to send this follow-up email:
+To: ${deal.contactEmail || deal.contactName + " (find email in HubSpot deal " + deal.hubspotId + ")"}
+Subject: Re: Warmy.io — ${deal.company}
+Body:
+${emailDraft}
+
+After sending, log it as an activity in HubSpot on deal ID ${deal.hubspotId}.`
+      );
+      setActionSuccess("✓ Follow-up sent via Gmail + logged in HubSpot");
+      setShowEmailPanel(false);
+      onFollowUpDone(deal.id);
+    } catch (e) {
+      setActionError("Send failed: " + e.message);
+    }
+    setSendingEmail(false);
+  };
 
   const action = getPipelineAction(deal);
   const stageConfig = PIPELINE_STAGES[deal.stage] || PIPELINE_STAGES.meeting_scheduled;
@@ -1432,26 +1483,71 @@ function PipelineDealCard({ deal, onStageChange, onFollowUpDone, onLogActivity }
                 </>
               )}
 
-              {/* Proposal Sent Day 3: follow-up button */}
+              {/* Proposal Sent Day 3+: email generator */}
               {deal.stage === "proposal_sent" && deal.daysInStage >= 3 && !deal.followUpSentDay3 && deal.daysInStage < 9 && (
-                <button onClick={handleDay3Done} disabled={loading}
-                  style={{ flex: 1, minWidth: 160, padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
-                  ✉ Mark Day-3 Follow-up Sent ✓
-                </button>
+                <div style={{ width: "100%" }}>
+                  <button onClick={generateFollowUpEmail} disabled={generatingEmail || loading}
+                    style={{ width: "100%", padding: "10px 14px", borderRadius: showEmailPanel ? "8px 8px 0 0" : 8, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", borderBottom: showEmailPanel ? "none" : undefined, color: "#f59e0b", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {generatingEmail ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⟳</span> Generating…</> : `✦ Generate Day-${deal.daysInStage} Follow-up Email`}
+                  </button>
+                  {showEmailPanel && (
+                    <div style={{ border: "1px solid rgba(245,158,11,0.35)", borderTop: "none", borderRadius: "0 0 8px 8px", padding: 12, background: "var(--warmy-navy-3)" }}>
+                      <textarea
+                        value={emailDraft}
+                        onChange={e => setEmailDraft(e.target.value)}
+                        placeholder="Generating email in AE's voice…"
+                        style={{ width: "100%", minHeight: 140, padding: 12, background: "var(--warmy-navy)", border: "1px solid var(--warmy-border)", borderRadius: 6, color: "var(--warmy-text)", fontSize: 12, lineHeight: 1.7, fontFamily: "'Inter', sans-serif", resize: "vertical", outline: "none", boxSizing: "border-box", marginBottom: 8 }}
+                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={sendFollowUpEmail} disabled={!emailDraft || sendingEmail || generatingEmail}
+                          style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: emailDraft && !sendingEmail ? "var(--warmy-orange)" : "var(--warmy-navy-4)", border: "none", color: emailDraft && !sendingEmail ? "#fff" : "var(--warmy-text-dim)", fontSize: 12, fontWeight: 700, cursor: emailDraft && !sendingEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                          {sendingEmail ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⟳</span> Sending…</> : "✉ Send via Gmail"}
+                        </button>
+                        <button onClick={handleDay3Done} disabled={loading}
+                          style={{ padding: "9px 14px", borderRadius: 8, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", color: "#f59e0b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                          ✓ Mark Sent (no email)
+                        </button>
+                        <button onClick={() => setShowEmailPanel(false)}
+                          style={{ padding: "9px 12px", borderRadius: 8, background: "transparent", border: "1px solid var(--warmy-border)", color: "var(--warmy-text-dim)", fontSize: 12, cursor: "pointer" }}>✕</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Proposal Sent Day 9: negotiation or lost */}
+              {/* Proposal Sent Day 9: email + negotiation or lost */}
               {deal.stage === "proposal_sent" && deal.daysInStage >= 9 && (
-                <>
-                  <button onClick={() => handleStageChange("negotiation")} disabled={loading}
-                    style={{ flex: 1, minWidth: 130, padding: "10px 14px", borderRadius: 8, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
-                    → Move to Negotiation
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {/* Email generator for final follow-up */}
+                  <button onClick={generateFollowUpEmail} disabled={generatingEmail}
+                    style={{ width: "100%", padding: "9px 14px", borderRadius: showEmailPanel ? "8px 8px 0 0" : 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.3)", borderBottom: showEmailPanel ? "none" : undefined, color: "var(--warmy-red)", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                    {generatingEmail ? <><span style={{ animation: "spin 0.8s linear infinite", display: "inline-block" }}>⟳</span> Generating…</> : `✦ Generate Final Follow-up (Day ${deal.daysInStage})`}
                   </button>
-                  <button onClick={() => handleStageChange("closed_lost", "No response after Day 9 — no active discussions")} disabled={loading}
-                    style={{ flex: 1, minWidth: 130, padding: "10px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "#ef4444", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace" }}>
-                    ✕ Mark Closed Lost
-                  </button>
-                </>
+                  {showEmailPanel && (
+                    <div style={{ border: "1px solid rgba(239,68,68,0.25)", borderTop: "none", borderRadius: "0 0 8px 8px", padding: 12, background: "var(--warmy-navy-3)", marginTop: -8 }}>
+                      <textarea value={emailDraft} onChange={e => setEmailDraft(e.target.value)}
+                        placeholder="Generating final follow-up…"
+                        style={{ width: "100%", minHeight: 130, padding: 12, background: "var(--warmy-navy)", border: "1px solid var(--warmy-border)", borderRadius: 6, color: "var(--warmy-text)", fontSize: 12, lineHeight: 1.7, fontFamily: "'Inter', sans-serif", resize: "vertical", outline: "none", boxSizing: "border-box", marginBottom: 8 }} />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button onClick={sendFollowUpEmail} disabled={!emailDraft || sendingEmail}
+                          style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: emailDraft ? "var(--warmy-orange)" : "var(--warmy-navy-4)", border: "none", color: emailDraft ? "#fff" : "var(--warmy-text-dim)", fontSize: 12, fontWeight: 700, cursor: emailDraft ? "pointer" : "not-allowed" }}>
+                          {sendingEmail ? "Sending…" : "✉ Send via Gmail"}
+                        </button>
+                        <button onClick={() => setShowEmailPanel(false)} style={{ padding: "9px 12px", borderRadius: 8, background: "transparent", border: "1px solid var(--warmy-border)", color: "var(--warmy-text-dim)", fontSize: 12, cursor: "pointer" }}>✕</button>
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => handleStageChange("negotiation")} disabled={loading}
+                      style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.35)", color: "#f59e0b", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      → Move to Negotiation
+                    </button>
+                    <button onClick={() => handleStageChange("closed_lost", "No response after Day 9 — no active discussions")} disabled={loading}
+                      style={{ flex: 1, padding: "9px 14px", borderRadius: 8, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)", color: "var(--warmy-red)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                      ✕ Mark Closed Lost
+                    </button>
+                  </div>
+                </div>
               )}
 
               {/* Auto-close warning Day 10+ */}
