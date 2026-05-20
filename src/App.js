@@ -324,12 +324,93 @@ const INITIAL_TASKS = [
   },
 ];
 
-const MEETING_ANALYSES = [
+const INITIAL_ANALYSES = [
   // Scores and coaching based on the official Warmy AE Onboarding Playbook:
   // Framework: 1-Icebreaker(2min) 2-Discovery(8-10min) 3-Diagnosis(5min) 4-Solution/Pricing(5min) 5-Close/NextSteps(3-5min)
   // Must-ask: business type, email type, volume, domains/mailboxes, issue duration, domain age, ESP, Google Postmaster (B2C), timeline, expectations
   // Red flags to identify: cold from main domain, >40 emails/mailbox, >6 mailboxes/domain, 3rd party list, mixing cold+marketing, new domain+high volume
   // Mindset: be the doctor — diagnose first, then prescribe
+
+  // ══════════ MAY 19-20 LATEST CALLS ══════════
+  {
+    id: "M024", meetingId: "ef5f10b6-6339-45bb-b050-77fe5ff2b97c",
+    ae: "jorget@warmy.io", contact: "Jeff Turner", company: "Speech Improvement Company",
+    type: "Demo", date: "2026-05-19", duration: "45 min",
+    framework_scores: { icebreaker: 4, discovery: 5, diagnosis: 5, solution_fit: 5, close: 5 },
+    went_well: [
+      "Jeff came in already knowing something was wrong — Jorge diagnosed the root cause immediately: cold outreach over years has damaged domain reputation",
+      "Explained the deliverability test results clearly — Jeff was confused, Jorge walked him through it step by step",
+      "Validated their existing infrastructure decision (separate cold domain) — built instant trust",
+      "Closed on the call — Jeff said 'let\'s do it', payment link sent live, onboarding link shared in the same call",
+      "Natural negotiation: $35 × 6 → $28 × 10 across 2 domains. Jeff accepted immediately",
+      "Personal rapport at the end: Jeff visited Brazil, Jorge lived in California — cemented the relationship",
+      "Explicitly said \'I\'ll be your point of contact\' — AE ownership communicated clearly",
+    ],
+    improve: [
+      "Math error live: said \'35 times 6 should be 110\' — it\'s $210. Creates uncertainty even when caught",
+      "The deliverability test explanation took 5+ minutes — needs a 30-second version: \'Our test shows your reputation across Gmail, Outlook, Yahoo. Right now you have issues with Outlook and Yahoo.\'",
+      "Never confirmed sending volume per mailbox — important for correct warm-up plan sizing",
+    ],
+    score: 92,
+    playbook_verdict: "Near-perfect framework execution. Jorge was the doctor: diagnosed domain reputation damage, explained the mechanism clearly, closed on the call with onboarding booked. This is the benchmark call for the team — diagnosis → prescription → close in one meeting.",
+  },
+  {
+    id: "M025", meetingId: "33201822-6ba9-476a-8edd-5c13a7578c55",
+    ae: "felipev@warmy.io", contact: "Milagros Villalba Hachard", company: "Metro Vein Centers",
+    type: "Demo", date: "2026-05-19", duration: "36 min",
+    framework_scores: { icebreaker: 5, discovery: 4, diagnosis: 3, solution_fit: 4, close: 3 },
+    went_well: [
+      "Exceptional icebreaker — Florianópolis / Buenos Aires banter, Boca vs River jokes, genuine warmth before any business",
+      "Good discovery: B2C welcome series + newsletters (100k-175k/month), HubSpot, Klaviyo migration history, Gmail-based sales sequences",
+      "Correctly spotted the real problem: 99% deliverability score but emails going to promotions — explained the difference clearly",
+      "Demo in Spanish throughout — natural, warm, and perfectly matched to an Argentine prospect",
+      "Used early adoption discount mechanic: \'decide within 24 hours and I\'ll lock the rate\'",
+    ],
+    improve: [
+      "Diagnosis was shallow — Milagros sends opt-in B2C marketing emails, NOT cold outreach. Felipe never verified if warm-up is actually the solution vs list hygiene or content",
+      "Never asked how long they\'ve had the inbox placement problem — must-ask question skipped",
+      "8-minute setup troubleshooting session mid-demo (trying to connect Google Workspace) completely broke the flow. Setup belongs on the onboarding call, never on the demo",
+      "Close was vague: \'speak to your team, response by tomorrow\' — no specific callback time or next step confirmed",
+    ],
+    score: 75,
+    playbook_verdict: "Strong rapport, weak diagnosis. Milagros is Segment 02 (B2C Marketing to opt-in list) not cold outreach — Felipe never confirmed whether warm-up is the right solution vs content/segmentation issues. The 8-minute setup troubleshooting destroyed the demo momentum. Always defer setup to the onboarding call.",
+  },
+  {
+    id: "M026", meetingId: "369f8414-b99a-4404-953f-abfd8cfe6a75",
+    ae: "sofiiar@warmy.io", contact: "Armen Ghazaryan", company: "Playtronix (iGaming)",
+    type: "Demo", date: "2026-05-20", duration: "13 min",
+    framework_scores: { icebreaker: 3, discovery: 5, diagnosis: 4, solution_fit: 4, close: 3 },
+    went_well: [
+      "Immediately leveraged Warmy\'s iGaming experience — \'we work with Bad Cat Casino, Up Stars\' — expert positioning from minute one",
+      "Sharp discovery: correctly identified this as semi-cold (moving traffic between platforms, not pure opt-in)",
+      "Identified Customer.IO and explained the seed list manual upload workaround accurately",
+      "Gave correct advice: 3-4 months minimum, gradual ramp, don\'t stop after 2 weeks",
+      "Handled the \'bots vs real traffic\' question precisely — explained the AI-driven human-like behavior clearly",
+    ],
+    improve: [
+      "Armen said they start in 1-2 months — Sofiia accepted without urgency. Should have used: \'The best time to start warming up is before you launch — start now and you\'ll be ready exactly when you need it\'",
+      "Never confirmed exact number of senders — 30,000 total emails with how many mailboxes? One or multiple?",
+      "Close was soft: \'I should expect a response in about a month\' — 4 weeks with no follow-up plan",
+    ],
+    score: 80,
+    playbook_verdict: "Clean technical demo with excellent iGaming industry credibility. The urgency angle was completely missed — Armen gave a 1-2 month delay and Sofiia accepted it. The follow-up email needs a specific reason to start the warm-up now rather than waiting.",
+  },
+  {
+    id: "M027", meetingId: "06b666bd-99a7-4621-bee7-7c00bcbb54ca",
+    ae: "jorget@warmy.io", contact: "Phill Ash", company: "GovCentre",
+    type: "No Show", date: "2026-05-19", duration: "18 min",
+    framework_scores: { icebreaker: 0, discovery: 0, diagnosis: 0, solution_fit: 0, close: 0 },
+    went_well: [
+      "Meeting was recorded and logged in Avoma — no-show is properly captured with \'No Show\' outcome",
+    ],
+    improve: [
+      "Phill did not join — transcript shows Jorge speaking Portuguese to himself before ending the call",
+      "Action required: mark deal as Disqualified in HubSpot immediately with reason: \'No-show, no response to rebook attempts\'",
+      "Per playbook: disqualification requires a written reason before the stage can change",
+    ],
+    score: 0,
+    playbook_verdict: "No-show. Per playbook: mark Disqualified immediately in HubSpot with written reason. If Phill reaches out to rebook, create a new deal — do not reactivate this one.",
+  },
 
   // ══════════ SAID ══════════════
   {
@@ -1825,6 +1906,7 @@ function MeetingAnalysisCard({ analysis }) {
 ═══════════════════════════════════════════════════════ */
 export default function App() {
   const [tasks, setTasks]       = useState(INITIAL_TASKS);
+  const [analyses, setAnalyses] = useState(INITIAL_ANALYSES);
   const [tab, setTab]           = useState("tasks");
   const [pipeline, setPipeline] = useState(INITIAL_PIPELINE);
   const [pipelineLoading, setPipelineLoading] = useState(false);
@@ -1909,7 +1991,7 @@ export default function App() {
         return;
       }
 
-      const { newTasks, message, processed, totalFound } = data;
+      const { newTasks, newAnalyses, message, processed, totalFound } = data;
 
       setSyncLog([
         `Scanned ${data.totalFound || data.debug?.totalFetched || "?"} meetings from Avoma (last 14 days)`,
@@ -1934,6 +2016,13 @@ export default function App() {
           }));
           return [...updated, ...newTasks];
         });
+      }
+
+      // Add any new analyses from the sync
+      if (newAnalyses && newAnalyses.length > 0) {
+        setAnalyses(prev => [...newAnalyses, ...prev]);
+      }
+
       } else {
         // Still update days on existing tasks
         setTasks(prev => prev.map(t => ({
@@ -2320,7 +2409,7 @@ export default function App() {
             {/* Team score overview */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 24 }}>
               {Object.entries(AE_PROFILES).map(([email, ae]) => {
-                const aeAnalyses = MEETING_ANALYSES.filter(a => a.ae === email);
+                const aeAnalyses = analyses.filter(a => a.ae === email);
                 if (aeAnalyses.length === 0) return null;
                 const avgScore = Math.round(aeAnalyses.reduce((s, a) => s + a.score, 0) / aeAnalyses.length);
                 const scoreColor = avgScore >= 85 ? "#10b981" : avgScore >= 75 ? "#f59e0b" : "#ef4444";
@@ -2341,7 +2430,7 @@ export default function App() {
             </div>
 
             {/* Analysis cards — sorted newest first */}
-            {[...MEETING_ANALYSES]
+            {[...analyses]
               .filter(a => aeFilter === "all" || a.ae === aeFilter)
               .sort((a, b) => new Date(b.date) - new Date(a.date))
               .map(a => <MeetingAnalysisCard key={a.id} analysis={a} />)

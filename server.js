@@ -377,7 +377,7 @@ app.post("/api/avoma-sync", async (req, res) => {
 
     // ── 2. For each new meeting, fetch transcript + analyze with Claude ──
     const newTasks = [];
-
+    const newAnalyses = [];
     for (const meeting of newMeetings.slice(0, 10)) { // cap at 10 per sync
       try {
         // Fetch transcript
@@ -496,6 +496,104 @@ Return ONLY this JSON structure:
           isNew: true,
         });
 
+        // ── Generate Meeting Analysis with Claude ──
+        try {
+          const AE_PROFILES = {
+            "saidk@warmy.io":    { tone: "direct, warm, consultative", phrases: ["Yeah I mean look —", "Alright so here's the thing"] },
+            "gokhank@warmy.io":  { tone: "educational, rapport-first, closes live on call", phrases: ["Just to clarify", "How does that sound?"] },
+            "felipev@warmy.io":  { tone: "warm, Brazilian energy, uses 'man'/'brother', drops prices fast", phrases: ["Then again", "At the end of the day", "Cool cool cool"] },
+            "sofiiar@warmy.io":  { tone: "deep discovery-first, technical, validates prospect logic", phrases: ["Just to make sure I understand", "That's actually a very good logic"] },
+            "jorget@warmy.io":   { tone: "clear, methodical, step-by-step explanations, calm", phrases: ["So basically", "I must say", "Does that make sense?"] },
+          };
+          const aeProfile = AE_PROFILES[aeEmail] || {};
+
+          const analysisResp = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-5",
+              max_tokens: 1500,
+              system: `You are a sales coach for Warmy.io analyzing AE calls against the official onboarding playbook.
+
+PLAYBOOK FRAMEWORK (5 steps):
+1. Icebreaker (2 min) — build personal rapport before business
+2. Discovery (8-10 min) — ask: business type, email type (cold/warm/marketing), volume, domains/mailboxes, issue duration, domain age, ESP, timeline
+3. Diagnosis (5 min) — identify red flags: cold from main domain, >40 emails/mailbox, mixing cold+marketing, new domain+high volume, 3rd party lists
+4. Solution + Pricing (5 min) — match segment, explain mechanism, price confidently
+5. Close + Next Steps (3-5 min) — always leave with something concrete scheduled
+
+SEGMENTS: 01=B2B Cold Outbound, 02=B2B/B2C Marketing/Newsletter, 03=B2B Mass Sender (SMTP), 04=API/Reseller, 05=B2C Bulk Sender
+
+MINDSET: Be the doctor — diagnose before prescribing. Never pitch before you understand the full infrastructure.
+
+AE being analyzed: ${aeEmail}
+AE style: ${aeProfile.tone}
+
+Return ONLY valid JSON — no markdown, no explanation.`,
+              messages: [{
+                role: "user",
+                content: `Analyze this Warmy.io sales call against the playbook.
+
+Meeting: ${meeting.subject}
+AE: ${aeEmail}
+Contact: ${primaryContact.name} <${primaryContact.email}>
+Company: ${taskData?.company || meeting.subject}
+Date: ${meeting.start_at?.split("T")[0]}
+Duration: ${Math.round((meeting.duration || 0) / 60)} minutes
+Type: ${meeting.type?.label || "Demo"}
+Outcome: ${meeting.outcome?.label || "Unknown"}
+
+Transcript:
+${transcriptText || "(No transcript available)"}
+
+Return this exact JSON:
+{
+  "went_well": ["specific observation 1", "specific observation 2", "specific observation 3", "specific observation 4"],
+  "improve": ["specific coaching point 1", "specific coaching point 2", "specific coaching point 3"],
+  "score": 75,
+  "playbook_verdict": "One paragraph verdict against the playbook framework. Reference specific moments from the transcript.",
+  "framework_scores": {
+    "icebreaker": 4,
+    "discovery": 3,
+    "diagnosis": 4,
+    "solution_fit": 4,
+    "close": 3
+  },
+  "segment": "01"
+}`,
+              }],
+            }),
+          });
+
+          if (analysisResp.ok) {
+            const analysisData = await analysisResp.json();
+            const analysisText = (analysisData.content || []).map(b => b.text || "").join("");
+            const jsonMatch = analysisText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              const analysis = JSON.parse(jsonMatch[0]);
+              newAnalyses.push({
+                id: `ANALYSIS_${meeting.uuid.slice(0, 8).toUpperCase()}`,
+                meetingId: meeting.uuid,
+                ae: aeEmail,
+                contact: taskData?.contactName || primaryContact.name || "Unknown",
+                company: taskData?.company || meeting.subject || "Unknown",
+                type: meeting.type?.label || "Demo",
+                date: meeting.start_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+                duration: `${Math.round((meeting.duration || 0) / 60)} min`,
+                went_well: analysis.went_well || [],
+                improve: analysis.improve || [],
+                score: analysis.score || 70,
+                playbook_verdict: analysis.playbook_verdict || "",
+                framework_scores: analysis.framework_scores || {},
+                isNew: true,
+                syncedAt: new Date().toISOString(),
+              });
+            }
+          }
+        } catch (analysisErr) {
+          console.error(`Analysis generation failed for ${meeting.uuid}:`, analysisErr.message);
+        }
+
       } catch (meetingErr) {
         console.error(`Error processing meeting ${meeting.uuid}:`, meetingErr.message);
         continue;
@@ -504,10 +602,11 @@ Return ONLY this JSON structure:
 
     res.json({
       newTasks,
+      newAnalyses,
       totalFound: allMeetings.length,
       newCount: newMeetings.length,
       processed: newTasks.length,
-      message: `Synced ${newTasks.length} new meeting${newTasks.length !== 1 ? "s" : ""}`,
+      message: `Synced ${newTasks.length} meeting${newTasks.length !== 1 ? "s" : ""}, ${newAnalyses.length} analysis${newAnalyses.length !== 1 ? "es" : ""} generated`,
     });
 
   } catch (err) {
