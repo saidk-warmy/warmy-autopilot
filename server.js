@@ -391,29 +391,34 @@ app.post("/api/avoma-sync", async (req, res) => {
 
         let transcriptText = "";
         if (transcriptResp.ok) {
-          const transcriptData = await transcriptResp.json();
-          // Avoma returns transcript in multiple possible formats - handle all of them
-          if (typeof transcriptData === "string") {
-            transcriptText = transcriptData;
-          } else if (transcriptData.transcript && typeof transcriptData.transcript === "string") {
-            transcriptText = transcriptData.transcript;
-          } else if (Array.isArray(transcriptData.transcript)) {
-            transcriptText = transcriptData.transcript
-              .map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`)
-              .join("\n");
-          } else if (Array.isArray(transcriptData.segments)) {
-            transcriptText = transcriptData.segments
-              .map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`)
-              .join("\n");
-          } else if (Array.isArray(transcriptData)) {
-            transcriptText = transcriptData
-              .map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`)
-              .join("\n");
+          // Avoma returns PLAIN TEXT, not JSON — read as text first
+          const rawText = await transcriptResp.text();
+          console.log(`Transcript raw preview: ${rawText.slice(0, 150)}`);
+          
+          if (rawText.trim().startsWith("{") || rawText.trim().startsWith("[")) {
+            // JSON format — parse it
+            try {
+              const d = JSON.parse(rawText);
+              if (typeof d === "string") {
+                transcriptText = d;
+              } else if (d.transcript && typeof d.transcript === "string") {
+                transcriptText = d.transcript;
+              } else if (Array.isArray(d.transcript)) {
+                transcriptText = d.transcript.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
+              } else if (Array.isArray(d.segments)) {
+                transcriptText = d.segments.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
+              } else if (Array.isArray(d)) {
+                transcriptText = d.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
+              }
+            } catch(e) {
+              console.log("JSON parse failed:", e.message);
+              transcriptText = rawText;
+            }
           } else {
-            // Try extracting any text we can find
-            transcriptText = JSON.stringify(transcriptData).slice(0, 8000);
+            // Plain text — use directly (this is what Avoma actually returns)
+            transcriptText = rawText;
           }
-          transcriptText = transcriptText.slice(0, 10000);
+          transcriptText = transcriptText.slice(0, 12000);
         }
 
         console.log(`Meeting ${meeting.uuid}: transcript length = ${transcriptText.length} chars`);
