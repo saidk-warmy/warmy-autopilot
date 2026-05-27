@@ -278,7 +278,7 @@ app.get("/api/hubspot-pipeline", async (req, res) => {
         daysInStage: Math.max(0, daysInStage),
         dealValue: p.amount ? `$${parseFloat(p.amount).toFixed(0)}` : "TBD",
         followUpSentDay3: !!(p.notes_last_contacted && new Date(p.notes_last_contacted) > stageEntryDate),
-        lastActivity: p.hs_lastmodifieddate?.split("T")[0] || new Date().toISOString().split("T")[0],
+        lastActivity: p.notes_last_contacted?.split("T")[0] || p.hs_lastmodifieddate?.split("T")[0] || new Date().toISOString().split("T")[0],
         notes: `HubSpot: ${stageInfo.label}${p.amount ? ` · $${p.amount}` : ""}`,
         closedate: p.closedate,
         probability: p.hs_deal_stage_probability,
