@@ -383,10 +383,18 @@ app.post("/api/avoma-sync", async (req, res) => {
         
         // Try notes first - they contain key takeaways, pain points, timeline etc
         try {
-          const notesResp = await fetch(
+          // Try Bearer first, then Token (Avoma uses Token for some endpoints)
+          let notesResp = await fetch(
             `https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`,
             { headers: { "Authorization": `Bearer ${AVOMA_KEY}`, "Content-Type": "application/json" } }
           );
+          if (notesResp.status === 404 || notesResp.status === 401) {
+            notesResp = await fetch(
+              `https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`,
+              { headers: { "Authorization": `Token ${AVOMA_KEY}`, "Content-Type": "application/json" } }
+            );
+            console.log(`Notes with Token auth: ${notesResp.status}`);
+          }
           if (notesResp.ok) {
             const notesRaw = await notesResp.text();
             if (notesRaw && !notesRaw.trim().startsWith("<!")) {
@@ -417,10 +425,16 @@ app.post("/api/avoma-sync", async (req, res) => {
         // Fallback: try transcript endpoint
         if (!transcriptText) {
           try {
-            const transcriptResp = await fetch(
+            let transcriptResp = await fetch(
               `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
               { headers: { "Authorization": `Bearer ${AVOMA_KEY}`, "Content-Type": "application/json" } }
             );
+            if (transcriptResp.status === 404 || transcriptResp.status === 401) {
+              transcriptResp = await fetch(
+                `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
+                { headers: { "Authorization": `Token ${AVOMA_KEY}`, "Content-Type": "application/json" } }
+              );
+            }
             const rawText = await transcriptResp.text();
             console.log(`Transcript status: ${transcriptResp.status}, preview: ${rawText.slice(0, 80)}`);
             if (transcriptResp.ok && rawText && !rawText.trim().startsWith("<!")) {
