@@ -392,15 +392,31 @@ app.post("/api/avoma-sync", async (req, res) => {
         let transcriptText = "";
         if (transcriptResp.ok) {
           const transcriptData = await transcriptResp.json();
-          // Build readable transcript from segments
-          const segments = transcriptData.transcript || transcriptData.segments || [];
-          transcriptText = segments
-            .map(s => `${s.speaker || "Speaker"}: ${s.text || s.content || ""}`)
-            .join("\n")
-            .slice(0, 8000); // limit for Claude context
+          // Avoma returns transcript in multiple possible formats - handle all of them
+          if (typeof transcriptData === "string") {
+            transcriptText = transcriptData;
+          } else if (transcriptData.transcript && typeof transcriptData.transcript === "string") {
+            transcriptText = transcriptData.transcript;
+          } else if (Array.isArray(transcriptData.transcript)) {
+            transcriptText = transcriptData.transcript
+              .map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`)
+              .join("\n");
+          } else if (Array.isArray(transcriptData.segments)) {
+            transcriptText = transcriptData.segments
+              .map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`)
+              .join("\n");
+          } else if (Array.isArray(transcriptData)) {
+            transcriptText = transcriptData
+              .map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`)
+              .join("\n");
+          } else {
+            // Try extracting any text we can find
+            transcriptText = JSON.stringify(transcriptData).slice(0, 8000);
+          }
+          transcriptText = transcriptText.slice(0, 10000);
         }
 
-        // Identify which AE ran the call
+        console.log(`Meeting ${meeting.uuid}: transcript length = ${transcriptText.length} chars`);
         const attendeeEmails = (meeting.attendees || []).map(a => a.email.toLowerCase());
         const aeEmail = attendeeEmails.find(e => WARMY_EMAILS.includes(e)) || "gokhank@warmy.io";
         const externalAttendees = (meeting.attendees || []).filter(a =>
