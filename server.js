@@ -383,18 +383,18 @@ app.post("/api/avoma-sync", async (req, res) => {
         
         // Try notes first - they contain key takeaways, pain points, timeline etc
         try {
-          // Try Bearer first, then Token (Avoma uses Token for some endpoints)
-          let notesResp = await fetch(
+          // Try multiple notes endpoint formats
+          const notesUrlsToTry = [
             `https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`,
-            { headers: { "Authorization": `Bearer ${AVOMA_KEY}`, "Content-Type": "application/json" } }
-          );
-          if (notesResp.status === 404 || notesResp.status === 401) {
-            notesResp = await fetch(
-              `https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`,
-              { headers: { "Authorization": `Token ${AVOMA_KEY}`, "Content-Type": "application/json" } }
-            );
-            console.log(`Notes with Token auth: ${notesResp.status}`);
+            `https://api.avoma.com/v1/notes/?meeting=${meeting.uuid}`,
+          ];
+          let notesResp = { status: 404, ok: false };
+          for (const url of notesUrlsToTry) {
+            notesResp = await fetch(url, { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } });
+            console.log(`Notes URL ${url}: ${notesResp.status}`);
+            if (notesResp.ok) break;
           }
+          const finalNotesResp = notesResp;
           if (notesResp.ok) {
             const notesRaw = await notesResp.text();
             if (notesRaw && !notesRaw.trim().startsWith("<!")) {
@@ -425,15 +425,18 @@ app.post("/api/avoma-sync", async (req, res) => {
         // Fallback: try transcript endpoint
         if (!transcriptText) {
           try {
-            let transcriptResp = await fetch(
+            // Try multiple URL formats - Avoma may use transcription_uuid or meeting uuid
+            const transcriptionUuid = meeting.transcription_uuid || meeting.uuid;
+            const urlsToTry = [
+              `https://api.avoma.com/v1/transcriptions/${transcriptionUuid}/`,
               `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
-              { headers: { "Authorization": `Bearer ${AVOMA_KEY}`, "Content-Type": "application/json" } }
-            );
-            if (transcriptResp.status === 404 || transcriptResp.status === 401) {
-              transcriptResp = await fetch(
-                `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
-                { headers: { "Authorization": `Token ${AVOMA_KEY}`, "Content-Type": "application/json" } }
-              );
+              `https://api.avoma.com/v1/transcriptions/${meeting.uuid}/`,
+            ];
+            let transcriptResp = { status: 404, ok: false };
+            for (const url of urlsToTry) {
+              transcriptResp = await fetch(url, { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } });
+              console.log(`Transcript URL ${url}: ${transcriptResp.status}`);
+              if (transcriptResp.ok) break;
             }
             const rawText = await transcriptResp.text();
             console.log(`Transcript status: ${transcriptResp.status}, preview: ${rawText.slice(0, 80)}`);
