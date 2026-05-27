@@ -378,55 +378,60 @@ app.post("/api/avoma-sync", async (req, res) => {
     const newAnalyses = [];
     for (const meeting of newMeetings.slice(0, 10)) { // cap at 10 per sync
       try {
-        // Fetch transcript
-        const transcriptResp = await fetch(
-          `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
-          {
-            headers: {
-              "Authorization": `Bearer ${AVOMA_KEY}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-
+        // Fetch meeting notes (more reliable than transcript endpoint)
         let transcriptText = "";
-        // Try transcript endpoint
-        const rawText = await transcriptResp.text();
-        console.log(`Transcript response status: ${transcriptResp.status}, starts with: ${rawText.slice(0, 80)}`);
         
-        if (transcriptResp.ok && rawText && !rawText.trim().startsWith("<!")) {
-          if (rawText.trim().startsWith("{") || rawText.trim().startsWith("[")) {
-            try {
-              const d = JSON.parse(rawText);
-              if (typeof d === "string") transcriptText = d;
-              else if (d.transcript && typeof d.transcript === "string") transcriptText = d.transcript;
-              else if (Array.isArray(d.transcript)) transcriptText = d.transcript.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
-              else if (Array.isArray(d.segments)) transcriptText = d.segments.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
-              else if (Array.isArray(d)) transcriptText = d.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
-            } catch { transcriptText = rawText; }
-          } else {
-            transcriptText = rawText; // plain text
+        // Try notes first - they contain key takeaways, pain points, timeline etc
+        try {
+          const notesResp = await fetch(
+            `https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`,
+            { headers: { "Authorization": `Bearer ${AVOMA_KEY}`, "Content-Type": "application/json" } }
+          );
+          if (notesResp.ok) {
+            const notesRaw = await notesResp.text();
+            if (notesRaw && !notesRaw.trim().startsWith("<!")) {
+              // Extract text from notes JSON structure
+              try {
+                const notesData = JSON.parse(notesRaw);
+                const extractText = (blocks) => {
+                  if (!Array.isArray(blocks)) return "";
+                  return blocks.map(block => {
+                    if (!block) return "";
+                    if (block.text && typeof block.text === "string") return block.text;
+                    if (block.children) return extractText(block.children);
+                    return "";
+                  }).filter(Boolean).join(" ");
+                };
+                const notesBlocks = Array.isArray(notesData) ? notesData : (notesData.notes || []);
+                transcriptText = extractText(notesBlocks).slice(0, 8000);
+                console.log(`Notes extracted for ${meeting.uuid}: ${transcriptText.length} chars`);
+              } catch {
+                transcriptText = notesRaw.slice(0, 8000);
+              }
+            }
+          }
+        } catch(e) {
+          console.log(`Notes fetch failed for ${meeting.uuid}:`, e.message);
+        }
+
+        // Fallback: try transcript endpoint
+        if (!transcriptText) {
+          try {
+            const transcriptResp = await fetch(
+              `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
+              { headers: { "Authorization": `Bearer ${AVOMA_KEY}`, "Content-Type": "application/json" } }
+            );
+            const rawText = await transcriptResp.text();
+            console.log(`Transcript status: ${transcriptResp.status}, preview: ${rawText.slice(0, 80)}`);
+            if (transcriptResp.ok && rawText && !rawText.trim().startsWith("<!")) {
+              transcriptText = rawText.slice(0, 12000);
+            }
+          } catch(e) {
+            console.log(`Transcript fetch failed for ${meeting.uuid}:`, e.message);
           }
         }
-        
-        // If transcript failed, try meeting notes as fallback
-        if (!transcriptText && meeting.notes_ready) {
-          try {
-            const notesResp = await fetch(
-              `https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`,
-              { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } }
-            );
-            if (notesResp.ok) {
-              const notesData = await notesResp.json();
-              transcriptText = JSON.stringify(notesData).slice(0, 8000);
-              console.log(`Using notes fallback for ${meeting.uuid}`);
-            }
-          } catch {}
-        }
-        
-        transcriptText = transcriptText.slice(0, 12000);
 
-        console.log(`Meeting ${meeting.uuid}: transcript length = ${transcriptText.length} chars`);
+        console.log(`Meeting ${meeting.uuid}: final context length = ${transcriptText.length} chars`);
         const attendeeEmails = (meeting.attendees || []).map(a => a.email.toLowerCase());
         const aeEmail = attendeeEmails.find(e => WARMY_EMAILS.includes(e)) || "gokhank@warmy.io";
         const externalAttendees = (meeting.attendees || []).filter(a =>
