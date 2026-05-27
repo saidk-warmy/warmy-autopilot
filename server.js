@@ -390,36 +390,41 @@ app.post("/api/avoma-sync", async (req, res) => {
         );
 
         let transcriptText = "";
-        if (transcriptResp.ok) {
-          // Avoma returns PLAIN TEXT, not JSON — read as text first
-          const rawText = await transcriptResp.text();
-          console.log(`Transcript raw preview: ${rawText.slice(0, 150)}`);
-          
+        // Try transcript endpoint
+        const rawText = await transcriptResp.text();
+        console.log(`Transcript response status: ${transcriptResp.status}, starts with: ${rawText.slice(0, 80)}`);
+        
+        if (transcriptResp.ok && rawText && !rawText.trim().startsWith("<!")) {
           if (rawText.trim().startsWith("{") || rawText.trim().startsWith("[")) {
-            // JSON format — parse it
             try {
               const d = JSON.parse(rawText);
-              if (typeof d === "string") {
-                transcriptText = d;
-              } else if (d.transcript && typeof d.transcript === "string") {
-                transcriptText = d.transcript;
-              } else if (Array.isArray(d.transcript)) {
-                transcriptText = d.transcript.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
-              } else if (Array.isArray(d.segments)) {
-                transcriptText = d.segments.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
-              } else if (Array.isArray(d)) {
-                transcriptText = d.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
-              }
-            } catch(e) {
-              console.log("JSON parse failed:", e.message);
-              transcriptText = rawText;
-            }
+              if (typeof d === "string") transcriptText = d;
+              else if (d.transcript && typeof d.transcript === "string") transcriptText = d.transcript;
+              else if (Array.isArray(d.transcript)) transcriptText = d.transcript.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
+              else if (Array.isArray(d.segments)) transcriptText = d.segments.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
+              else if (Array.isArray(d)) transcriptText = d.map(s => `${s.speaker_name || s.speaker || "Speaker"}: ${s.text || s.content || ""}`).join("\n");
+            } catch { transcriptText = rawText; }
           } else {
-            // Plain text — use directly (this is what Avoma actually returns)
-            transcriptText = rawText;
+            transcriptText = rawText; // plain text
           }
-          transcriptText = transcriptText.slice(0, 12000);
         }
+        
+        // If transcript failed, try meeting notes as fallback
+        if (!transcriptText && meeting.notes_ready) {
+          try {
+            const notesResp = await fetch(
+              `https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`,
+              { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } }
+            );
+            if (notesResp.ok) {
+              const notesData = await notesResp.json();
+              transcriptText = JSON.stringify(notesData).slice(0, 8000);
+              console.log(`Using notes fallback for ${meeting.uuid}`);
+            }
+          } catch {}
+        }
+        
+        transcriptText = transcriptText.slice(0, 12000);
 
         console.log(`Meeting ${meeting.uuid}: transcript length = ${transcriptText.length} chars`);
         const attendeeEmails = (meeting.attendees || []).map(a => a.email.toLowerCase());
