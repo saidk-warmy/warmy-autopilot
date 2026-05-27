@@ -344,10 +344,8 @@ app.post("/api/avoma-sync", async (req, res) => {
     const newMeetings = allMeetings.filter(m => {
       if (m.is_internal) return false;
       if (m.is_private) return false;
-      // state = "completed" means the meeting happened (past)
+      // state = "completed" means the meeting happened
       if (m.state !== "completed") return false;
-      // Must have transcript ready OR audio ready (transcription might still be processing)
-      if (!m.transcript_ready && !m.audio_ready) return false;
       if (existingIds.includes(m.uuid)) return false;
 
       // Must have at least one external attendee

@@ -1836,6 +1836,7 @@ function MeetingAnalysisCard({ analysis }) {
             <span style={{ fontSize: 12, color: "var(--warmy-text-dim)" }}>·</span>
             <span style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>{analysis.company}</span>
             <Badge label={analysis.type} color={aeProfile?.color || "#64748b"} />
+            {analysis.isNew && <Badge label="NEW" color="var(--warmy-green)" />}
           </div>
           <span style={{ fontSize: 11, color: "var(--warmy-text-dim)" }}>
             {analysis.date} · {analysis.duration} · {aeProfile?.name}
@@ -1915,6 +1916,19 @@ function MeetingAnalysisCard({ analysis }) {
 ═══════════════════════════════════════════════════════ */
 export default function App() {
   const [tasks, setTasks]       = useState(INITIAL_TASKS);
+  // Persist dismissed task IDs across refreshes
+  const [dismissedIds, setDismissedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("warmy_dismissed") || "[]")); }
+    catch { return new Set(); }
+  });
+  const persistDismiss = (id) => {
+    setDismissedIds(prev => {
+      const next = new Set(prev);
+      next.add(id);
+      try { localStorage.setItem("warmy_dismissed", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
   const [analyses, setAnalyses] = useState(INITIAL_ANALYSES);
   const [tab, setTab]           = useState("tasks");
   const [pipeline, setPipeline] = useState(INITIAL_PIPELINE);
@@ -1948,19 +1962,30 @@ export default function App() {
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
 
-  // Action Queue = only FU1 (post-meeting), only pending, exclude closed stages
-  // Also cross-reference with live HubSpot pipeline to catch deals closed after task was created
+  // Action Queue = only FU1 (post-meeting), only pending, exclude closed/dismissed/already-contacted
   const CLOSED_STAGES = new Set(["Closed Lost", "Closed Won ✓", "Disqualified", "closed_lost", "closed_won", "disqualified"]);
   const closedHubspotIds = new Set(
     pipeline.filter(d => CLOSED_STAGES.has(d.stage)).map(d => String(d.hubspotId))
   );
-  const pendingTasks = tasks.filter(t =>
-    t.status === "pending" &&
-    t.type === "fu1" &&
-    !CLOSED_STAGES.has(t.dealStage) &&
-    !(t.hubspotDealId && closedHubspotIds.has(String(t.hubspotDealId))) &&
-    (aeFilter === "all" || t.ae === aeFilter)
-  ).sort((a, b) => new Date(b.meetingDate) - new Date(a.meetingDate));
+  // Build map of hubspotId → lastContactedDate from pipeline
+  const lastContactedMap = {};
+  pipeline.forEach(d => { if (d.hubspotId && d.lastActivity) lastContactedMap[String(d.hubspotId)] = d.lastActivity; });
+
+  const pendingTasks = tasks.filter(t => {
+    if (t.status !== "pending") return false;
+    if (t.type !== "fu1") return false;
+    if (dismissedIds.has(t.id)) return false;
+    if (CLOSED_STAGES.has(t.dealStage)) return false;
+    if (t.hubspotDealId && closedHubspotIds.has(String(t.hubspotDealId))) return false;
+    // Hide if AE already contacted after the meeting date (sent from HubSpot/Gmail externally)
+    if (t.hubspotDealId && lastContactedMap[String(t.hubspotDealId)]) {
+      const contacted = new Date(lastContactedMap[String(t.hubspotDealId)]);
+      const meetingDate = new Date(t.meetingDate);
+      if (contacted > meetingDate) return false;
+    }
+    if (aeFilter !== "all" && t.ae !== aeFilter) return false;
+    return true;
+  }).sort((a, b) => new Date(b.meetingDate) - new Date(a.meetingDate));
 
   const sentTasks = tasks.filter(t =>
     t.status === "sent" &&
@@ -1983,6 +2008,7 @@ export default function App() {
   };
 
   const handleDismiss = (id) => {
+    persistDismiss(id);
     setTasks(prev => prev.map(t => t.id === id ? { ...t, status: "sent" } : t));
   };
 
@@ -2396,10 +2422,27 @@ export default function App() {
         {/* ════ MEETING ANALYSIS ════ */}
         {tab === "analysis" && (
           <div style={{ animation: "slideUp 0.3s ease" }}>
-            <div style={{ marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#f8fafc", marginBottom: 4 }}>Meeting Analysis</h2>
-              <p style={{ fontSize: 13, color: "#475569", fontFamily: "'JetBrains Mono', monospace" }}>AI-generated from Avoma transcripts — what each AE did well and where to improve</p>
+            <div style={{ marginBottom: 20, display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--warmy-text)", letterSpacing: "-0.3px", marginBottom: 4 }}>Meeting Analysis</h2>
+                <p style={{ fontSize: 13, color: "var(--warmy-text-muted)" }}>AI-generated from Avoma transcripts — scored against the Warmy sales playbook</p>
+              </div>
+              <button
+                onClick={handleSync}
+                disabled={syncing}
+                style={{ padding: "8px 14px", borderRadius: 8, background: syncing ? "var(--warmy-navy-3)" : "var(--warmy-orange-dim)", border: `1px solid ${syncing ? "var(--warmy-border)" : "var(--warmy-orange-border)"}`, color: syncing ? "var(--warmy-text-muted)" : "var(--warmy-orange)", fontSize: 12, fontWeight: 600, cursor: syncing ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: 6 }}
+              >
+                <span style={{ display: "inline-block", animation: syncing ? "spin 0.8s linear infinite" : "none" }}>⟳</span>
+                {syncing ? "Syncing…" : "Sync New Meetings"}
+              </button>
             </div>
+
+            {/* Sync result */}
+            {syncLog.length > 0 && (
+              <div style={{ marginBottom: 16, padding: "8px 14px", borderRadius: 8, background: "rgba(63,185,80,0.08)", border: "1px solid rgba(63,185,80,0.2)", fontSize: 12, color: "var(--warmy-green)" }}>
+                {syncLog[syncLog.length - 1]}
+              </div>
+            )}
 
             {/* Team score overview */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 10, marginBottom: 24 }}>
