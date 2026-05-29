@@ -36,6 +36,11 @@ const pendingAnalyses = [];
    /api/avoma-webhook — Receives Avoma webhook events
    Set this URL in Avoma → Settings → Webhooks
 ───────────────────────────────────────────────────── */
+app.get("/api/avoma-webhook", (req, res) => {
+  // Avoma sends a GET to verify the URL exists before creating the webhook
+  res.json({ status: "ok", service: "warmy-autopilot" });
+});
+
 app.post("/api/avoma-webhook", async (req, res) => {
   const event = req.body;
   console.log("Avoma webhook received:", event?.event_type, event?.meeting?.uuid);
