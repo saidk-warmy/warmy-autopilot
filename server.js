@@ -29,9 +29,119 @@ app.post("/api/claude", async (req, res) => {
   }
 });
 
+// In-memory store for analyses generated via webhook (survives until restart)
+const pendingAnalyses = [];
+
 /* ─────────────────────────────────────────────────────
-   /api/hubspot-update — Update a deal stage directly
+   /api/avoma-webhook — Receives Avoma webhook events
+   Set this URL in Avoma → Settings → Webhooks
 ───────────────────────────────────────────────────── */
+app.post("/api/avoma-webhook", async (req, res) => {
+  const event = req.body;
+  console.log("Avoma webhook received:", event?.event_type, event?.meeting?.uuid);
+
+  // Acknowledge immediately so Avoma doesn't retry
+  res.json({ received: true });
+
+  // Process async after responding
+  const AVOMA_KEY = process.env.AVOMA_API_KEY;
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+
+  // Handle transcript ready events
+  const eventType = event?.event_type || event?.type || "";
+  const meeting = event?.meeting || event?.data || event;
+
+  if (!meeting?.uuid) return;
+  if (!eventType.includes("transcript") && !eventType.includes("completed") && !eventType.includes("note")) {
+    console.log("Skipping event type:", eventType);
+    return;
+  }
+
+  try {
+    const { default: fetch } = await import("node-fetch");
+
+    // Find the AE from attendees
+    const WARMY_EMAILS = ["saidk@warmy.io","gokhank@warmy.io","felipev@warmy.io","sofiiar@warmy.io","jorget@warmy.io"];
+    const OWNER_EMAIL_MAP = { "88489253": "felipev@warmy.io", "87333667": "jorget@warmy.io", "75485407": "sofiiar@warmy.io", "91804682": "gokhank@warmy.io", "79157594": "saidk@warmy.io" };
+    const attendees = meeting.attendees || [];
+    const aeEmail = attendees.map(a => (a.email||"").toLowerCase()).find(e => WARMY_EMAILS.includes(e)) || "gokhank@warmy.io";
+    const externalAttendees = attendees.filter(a => !WARMY_EMAILS.includes((a.email||"").toLowerCase()));
+    const primaryContact = externalAttendees[0] || { name: "Unknown", email: "" };
+
+    // Fetch transcript
+    let transcriptText = "";
+    const urlsToTry = [
+      `https://api.avoma.com/v1/transcriptions/${meeting.transcription_uuid || meeting.uuid}/`,
+      `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
+    ];
+    for (const url of urlsToTry) {
+      const r = await fetch(url, { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } });
+      if (r.ok) { transcriptText = (await r.text()).slice(0, 12000); break; }
+    }
+
+    if (!transcriptText) {
+      // Try notes
+      const nr = await fetch(`https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`, { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } });
+      if (nr.ok) transcriptText = (await nr.text()).slice(0, 8000);
+    }
+
+    // Generate analysis with Claude
+    const AE_PROFILES = {
+      "saidk@warmy.io": { tone: "direct, warm, consultative" },
+      "gokhank@warmy.io": { tone: "educational, rapport-first, closes live on call" },
+      "felipev@warmy.io": { tone: "warm, Brazilian energy, drops prices fast" },
+      "sofiiar@warmy.io": { tone: "deep discovery-first, technical" },
+      "jorget@warmy.io": { tone: "clear, methodical, step-by-step" },
+    };
+
+    const analysisResp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-5",
+        max_tokens: 1500,
+        system: `You are a sales coach for Warmy.io analyzing AE calls against the 5-step playbook: 1-Icebreaker 2-Discovery(ask: business type, email type, volume, domains, domain age, ESP, issue duration) 3-Diagnosis(red flags: cold from main domain, >40 emails/mailbox, mixing cold+marketing) 4-Solution+Pricing 5-Close(always leave with something concrete). Be the doctor — diagnose before prescribing. Return ONLY valid JSON.`,
+        messages: [{ role: "user", content: `Analyze this Warmy.io sales call. AE: ${aeEmail} (${AE_PROFILES[aeEmail]?.tone}). Contact: ${primaryContact.name} at ${meeting.subject}. Duration: ${Math.round((meeting.duration||0)/60)} min. Outcome: ${meeting.outcome?.label||""}.\n\nTranscript:\n${transcriptText||"(no transcript)"}\n\nReturn JSON: {"went_well":["..."],"improve":["..."],"score":75,"playbook_verdict":"...","framework_scores":{"icebreaker":4,"discovery":3,"diagnosis":3,"solution_fit":4,"close":3}}` }],
+      }),
+    });
+
+    if (analysisResp.ok) {
+      const d = await analysisResp.json();
+      const text = (d.content||[]).map(b=>b.text||"").join("");
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        const a = JSON.parse(match[0]);
+        pendingAnalyses.push({
+          id: `WH_${meeting.uuid.slice(0,8).toUpperCase()}`,
+          meetingId: meeting.uuid,
+          ae: aeEmail,
+          contact: primaryContact.name || "Unknown",
+          company: meeting.subject || "Unknown",
+          type: meeting.type?.label || "Demo",
+          date: meeting.start_at?.split("T")[0] || new Date().toISOString().split("T")[0],
+          duration: `${Math.round((meeting.duration||0)/60)} min`,
+          ...a,
+          isNew: true,
+          syncedAt: new Date().toISOString(),
+        });
+        console.log(`✓ Webhook analysis generated for ${meeting.uuid}: score ${a.score}`);
+      }
+    }
+  } catch(e) {
+    console.error("Webhook processing error:", e.message);
+  }
+});
+
+/* ─────────────────────────────────────────────────────
+   /api/pending-analyses — App polls this to get webhook-generated analyses
+───────────────────────────────────────────────────── */
+app.get("/api/pending-analyses", (req, res) => {
+  const since = req.query.since ? new Date(req.query.since) : new Date(0);
+  const fresh = pendingAnalyses.filter(a => new Date(a.syncedAt) > since);
+  res.json({ analyses: fresh, total: pendingAnalyses.length });
+});
+
+
 app.post("/api/hubspot-update", async (req, res) => {
   const HS_TOKEN = process.env.HUBSPOT_TOKEN;
   if (!HS_TOKEN) return res.status(400).json({ error: "HUBSPOT_TOKEN not set" });
@@ -314,7 +424,9 @@ app.post("/api/avoma-sync", async (req, res) => {
 
     // ── 1. Fetch recent completed meetings from Avoma ──
     const existingIds = req.body.existingMeetingIds || [];
-    const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+    const fullSync = req.body.fullSync || false;
+    const daysBack = fullSync ? 14 : 2;
+    const fourteenDaysAgo = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
 
     // Fetch multiple pages to get all recent meetings

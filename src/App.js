@@ -1958,6 +1958,29 @@ export default function App() {
 
   // Load on mount
   useEffect(() => { loadPipeline(); }, []);
+
+  // Auto-poll for new webhook-generated analyses every 3 minutes
+  useEffect(() => {
+    let lastCheck = new Date().toISOString();
+    const poll = async () => {
+      try {
+        const resp = await fetch(`/api/pending-analyses?since=${encodeURIComponent(lastCheck)}`);
+        const data = await resp.json();
+        if (data.analyses && data.analyses.length > 0) {
+          setAnalyses(prev => {
+            const existingIds = new Set(prev.map(a => a.meetingId));
+            const newOnes = data.analyses.filter(a => !existingIds.has(a.meetingId));
+            if (newOnes.length === 0) return prev;
+            console.log(`Auto-added ${newOnes.length} new analyses from webhook`);
+            return [...newOnes, ...prev];
+          });
+          lastCheck = new Date().toISOString();
+        }
+      } catch {}
+    };
+    const interval = setInterval(poll, 3 * 60 * 1000); // every 3 minutes
+    return () => clearInterval(interval);
+  }, []);
   const [aeFilter, setAeFilter] = useState("all");
   const [syncing, setSyncing]   = useState(false);
   const [lastSync, setLastSync] = useState(null);
