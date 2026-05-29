@@ -47,12 +47,13 @@ app.post("/api/avoma-webhook", async (req, res) => {
   const AVOMA_KEY = process.env.AVOMA_API_KEY;
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
-  // Handle transcript ready events
-  const eventType = event?.event_type || event?.type || "";
-  const meeting = event?.meeting || event?.data || event;
-
+  // The payload IS the meeting object for AINOTE events
+  const meeting = event;
   if (!meeting?.uuid) return;
-  if (!eventType.includes("transcript") && !eventType.includes("completed") && !eventType.includes("note")) {
+
+  // Only process AI notes ready events
+  const eventType = meeting.event_type || "";
+  if (eventType !== "AINOTE" && !eventType.includes("transcript") && !eventType.includes("NOTE")) {
     console.log("Skipping event type:", eventType);
     return;
   }
@@ -60,30 +61,56 @@ app.post("/api/avoma-webhook", async (req, res) => {
   try {
     const { default: fetch } = await import("node-fetch");
 
-    // Find the AE from attendees
     const WARMY_EMAILS = ["saidk@warmy.io","gokhank@warmy.io","felipev@warmy.io","sofiiar@warmy.io","jorget@warmy.io"];
-    const OWNER_EMAIL_MAP = { "88489253": "felipev@warmy.io", "87333667": "jorget@warmy.io", "75485407": "sofiiar@warmy.io", "91804682": "gokhank@warmy.io", "79157594": "saidk@warmy.io" };
     const attendees = meeting.attendees || [];
     const aeEmail = attendees.map(a => (a.email||"").toLowerCase()).find(e => WARMY_EMAILS.includes(e)) || "gokhank@warmy.io";
     const externalAttendees = attendees.filter(a => !WARMY_EMAILS.includes((a.email||"").toLowerCase()));
-    const primaryContact = externalAttendees[0] || { name: "Unknown", email: "" };
+    const primaryContact = externalAttendees[0] || { name: meeting.organizer_name || "Unknown", email: meeting.organizer_email || "" };
 
-    // Fetch transcript
-    let transcriptText = "";
-    const urlsToTry = [
-      `https://api.avoma.com/v1/transcriptions/${meeting.transcription_uuid || meeting.uuid}/`,
-      `https://api.avoma.com/v1/meetings/${meeting.uuid}/transcript/`,
-    ];
-    for (const url of urlsToTry) {
-      const r = await fetch(url, { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } });
-      if (r.ok) { transcriptText = (await r.text()).slice(0, 12000); break; }
+    // Build rich context from webhook payload — no API calls needed!
+    const contextParts = [];
+
+    // AI notes are directly in the payload
+    if (meeting.ai_notes_txt) {
+      contextParts.push(`=== AI MEETING NOTES ===\n${meeting.ai_notes_txt}`);
     }
 
-    if (!transcriptText) {
-      // Try notes
-      const nr = await fetch(`https://api.avoma.com/v1/meetings/${meeting.uuid}/notes/`, { headers: { "Authorization": `Bearer ${AVOMA_KEY}` } });
-      if (nr.ok) transcriptText = (await nr.text()).slice(0, 8000);
+    // Action items
+    if (meeting.action_items?.length > 0) {
+      contextParts.push(`\n=== ACTION ITEMS ===\n${meeting.action_items.map(a => `- ${a.name}: ${a.action_item}`).join("\n")}`);
     }
+
+    // Talk ratio insights
+    if (meeting.insights?.talk_ratio) {
+      const ratio = meeting.insights.talk_ratio;
+      const aeRatio = ratio[aeEmail] || ratio[Object.keys(ratio).find(k => WARMY_EMAILS.includes(k))] || 50;
+      contextParts.push(`\n=== TALK RATIO ===\nAE talked: ${aeRatio.toFixed(0)}% | Prospect talked: ${(100 - aeRatio).toFixed(0)}%`);
+    }
+
+    // Try to fetch full transcript from VTT URL if available
+    if (meeting.transcription_vtt_url) {
+      try {
+        const vttResp = await fetch(meeting.transcription_vtt_url);
+        if (vttResp.ok) {
+          const vttText = await vttResp.text();
+          // Parse VTT - remove timestamps and formatting
+          const cleanTranscript = vttText
+            .split("\n")
+            .filter(line => !line.match(/^\d{2}:\d{2}/) && !line.match(/^WEBVTT/) && line.trim())
+            .join("\n")
+            .slice(0, 10000);
+          if (cleanTranscript.length > 200) {
+            contextParts.push(`\n=== FULL TRANSCRIPT ===\n${cleanTranscript}`);
+            console.log(`VTT transcript fetched: ${cleanTranscript.length} chars`);
+          }
+        }
+      } catch(e) {
+        console.log("VTT fetch failed:", e.message);
+      }
+    }
+
+    let transcriptText = contextParts.join("\n").slice(0, 14000);
+    console.log(`Webhook context for ${meeting.uuid}: ${transcriptText.length} chars`);
 
     // Generate analysis with Claude
     const AE_PROFILES = {
@@ -119,7 +146,7 @@ app.post("/api/avoma-webhook", async (req, res) => {
           company: meeting.subject || "Unknown",
           type: meeting.type?.label || "Demo",
           date: meeting.start_at?.split("T")[0] || new Date().toISOString().split("T")[0],
-          duration: `${Math.round((meeting.duration||0)/60)} min`,
+          duration: `${Math.round(meeting.duration || 0)} min`,  // duration already in minutes in webhook
           ...a,
           isNew: true,
           syncedAt: new Date().toISOString(),
