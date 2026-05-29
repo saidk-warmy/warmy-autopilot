@@ -37,28 +37,20 @@ const pendingAnalyses = [];
    Set this URL in Avoma → Settings → Webhooks
 ───────────────────────────────────────────────────── */
 app.get("/api/avoma-webhook", (req, res) => {
-  // Avoma GET verification
-  const challenge = req.query.challenge || req.query.token || "ok";
-  res.json({ status: "ok", challenge, service: "warmy-autopilot" });
+  res.status(200).json({ status: "ok", challenge: req.query.challenge || "ok" });
 });
 
-app.post("/api/avoma-webhook", async (req, res) => {
-  const event = req.body;
-
-  // Handle challenge/verification requests immediately
-  if (event?.challenge) {
-    return res.json({ challenge: event.challenge });
-  }
-  if (event?.type === "url_verification" || event?.event_type === "VERIFICATION") {
-    return res.json({ challenge: event.challenge || event.token });
-  }
-  console.log("Avoma webhook received:", event?.event_type, event?.meeting?.uuid);
-
-  // Acknowledge immediately so Avoma doesn't retry
-  res.json({ received: true });
+app.post("/api/avoma-webhook", (req, res) => {
+  // Always respond 200 immediately — Avoma retries if we don't
+  const body = req.body || {};
+  if (body.challenge) return res.status(200).json({ challenge: body.challenge });
+  res.status(200).json({ received: true });
 
   // Process async after responding
-  const AVOMA_KEY = process.env.AVOMA_API_KEY;
+  processAvomaWebhook(body).catch(e => console.error("Webhook error:", e.message));
+});
+
+async function processAvomaWebhook(event) {
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 
   // The payload IS the meeting object for AINOTE events
@@ -171,7 +163,7 @@ app.post("/api/avoma-webhook", async (req, res) => {
   } catch(e) {
     console.error("Webhook processing error:", e.message);
   }
-});
+}
 
 /* ─────────────────────────────────────────────────────
    /api/pending-analyses — App polls this to get webhook-generated analyses
