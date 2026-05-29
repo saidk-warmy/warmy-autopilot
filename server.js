@@ -37,12 +37,21 @@ const pendingAnalyses = [];
    Set this URL in Avoma → Settings → Webhooks
 ───────────────────────────────────────────────────── */
 app.get("/api/avoma-webhook", (req, res) => {
-  // Avoma sends a GET to verify the URL exists before creating the webhook
-  res.json({ status: "ok", service: "warmy-autopilot" });
+  // Avoma GET verification
+  const challenge = req.query.challenge || req.query.token || "ok";
+  res.json({ status: "ok", challenge, service: "warmy-autopilot" });
 });
 
 app.post("/api/avoma-webhook", async (req, res) => {
   const event = req.body;
+
+  // Handle challenge/verification requests immediately
+  if (event?.challenge) {
+    return res.json({ challenge: event.challenge });
+  }
+  if (event?.type === "url_verification" || event?.event_type === "VERIFICATION") {
+    return res.json({ challenge: event.challenge || event.token });
+  }
   console.log("Avoma webhook received:", event?.event_type, event?.meeting?.uuid);
 
   // Acknowledge immediately so Avoma doesn't retry
